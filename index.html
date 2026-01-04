@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Tools</title>
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #fafafa;
+  color: #333;
+}
+
+header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+header h1 {
+  margin: 0 0 10px 0;
+}
+
+header p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+section h2 {
+  margin-top: 0;
+  color: #667eea;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+}
+
+.tool-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tool-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.tool-list li:last-child {
+  border-bottom: none;
+}
+
+.tool-list a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.tool-list a:hover {
+  text-decoration: underline;
+}
+
+.tool-list .description {
+  color: #666;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.tag {
+  display: inline-block;
+  background: #eef;
+  color: #667eea;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.tag.python {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+footer {
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  margin-top: 40px;
+}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>My Tools</h1>
+    <p>A collection of single-file tools built with the help of LLMs.</p>
+  </header>
+
+  <section>
+    <h2>HTML/JavaScript Tools</h2>
+    <ul class="tool-list">
+      <li>
+        <a href="tools/html/gravity-balls.html">Gravity Balls</a>
+        <span class="tag">html</span>
+        <div class="description">Click to spawn bouncing balls with physics simulation.</div>
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Python Tools</h2>
+    <ul class="tool-list">
+      <li>
+        <a href="tools/python/excuse.py">excuse.py</a>
+        <span class="tag python">python</span>
+        <div class="description">Generate random developer excuses. Run with: <code>uv run tools/python/excuse.py</code></div>
+      </li>
+    </ul>
+  </section>
+
+  <footer>
+    Inspired by <a href="https://tools.simonwillison.net/">Simon Willison's Tools</a>
+  </footer>
+</body>
+</html>

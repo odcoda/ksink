@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gravity Balls</title>
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #1a1a2e;
+}
+
+canvas {
+  display: block;
+}
+
+.instructions {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.counter {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+}
+
+.clear-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.clear-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div class="instructions">Click anywhere to spawn balls</div>
+  <div class="counter">Balls: <span id="count">0</span></div>
+  <button class="clear-btn" id="clear">Clear All</button>
+
+  <script type="module">
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const countEl = document.getElementById('count');
+const clearBtn = document.getElementById('clear');
+
+let width, height;
+const balls = [];
+const gravity = 0.5;
+const friction = 0.99;
+const bounce = 0.8;
+
+const colors = [
+  '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4',
+  '#ffeaa7', '#dfe6e9', '#fd79a8', '#a29bfe'
+];
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+}
+
+function randomColor() {
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+function spawnBall(x, y) {
+  const ball = {
+    x,
+    y,
+    vx: (Math.random() - 0.5) * 10,
+    vy: (Math.random() - 0.5) * 10,
+    radius: 15 + Math.random() * 25,
+    color: randomColor()
+  };
+  balls.push(ball);
+  countEl.textContent = balls.length;
+}
+
+function update() {
+  for (const ball of balls) {
+    ball.vy += gravity;
+    ball.vx *= friction;
+    ball.vy *= friction;
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    if (ball.x + ball.radius > width) {
+      ball.x = width - ball.radius;
+      ball.vx *= -bounce;
+    }
+    if (ball.x - ball.radius < 0) {
+      ball.x = ball.radius;
+      ball.vx *= -bounce;
+    }
+    if (ball.y + ball.radius > height) {
+      ball.y = height - ball.radius;
+      ball.vy *= -bounce;
+    }
+    if (ball.y - ball.radius < 0) {
+      ball.y = ball.radius;
+      ball.vy *= -bounce;
+    }
+  }
+}
+
+function draw() {
+  ctx.fillStyle = 'rgba(26, 26, 46, 0.3)';
+  ctx.fillRect(0, 0, width, height);
+
+  for (const ball of balls) {
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = ball.color;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(ball.x - ball.radius * 0.3, ball.y - ball.radius * 0.3, ball.radius * 0.2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fill();
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+canvas.addEventListener('click', (e) => {
+  spawnBall(e.clientX, e.clientY);
+});
+
+clearBtn.addEventListener('click', () => {
+  balls.length = 0;
+  countEl.textContent = 0;
+});
+
+window.addEventListener('resize', resize);
+
+resize();
+loop();
+  </script>
+</body>
+</html>
