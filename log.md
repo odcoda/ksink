@@ -37,3 +37,12 @@ Switched the reels tool to live data:
 - Added randomized typographic treatments and card palettes
 Up next:
 - Add an author search or filter
+
+## 2026-01-06 reel interactions
+
+Updated the reels behavior:
+- Tap/click cycles another quote from the same book
+- Swipe scrolls to the next book as its own reel
+- Skips books with no usable quotes
+Up next:
+- Add an author search or filter

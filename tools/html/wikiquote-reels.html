@@ -666,9 +666,9 @@ const MIN_FONT_SIZE = 16;
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let autoAdvanceTimer = null;
-let quotePool = [];
 let bookQueue = [];
 let isAdding = false;
+const bookQuotes = new Map();
 
 function shuffle(list) {
   const array = [...list];
@@ -838,23 +838,30 @@ async function fetchWikiquote(book) {
   return data?.parse?.wikitext?.['*'] || '';
 }
 
-async function loadNextBook() {
-  const book = bookQueue.shift();
-  if (!book) {
-    return 0;
+function refillBookQueue() {
+  bookQueue = shuffle(books);
+}
+
+function nextBook() {
+  if (bookQueue.length === 0) {
+    refillBookQueue();
+  }
+  return bookQueue.shift();
+}
+
+async function getBookQuotes(book) {
+  if (bookQuotes.has(book.page)) {
+    return bookQuotes.get(book.page);
   }
 
   try {
     const wikitext = await fetchWikiquote(book);
     if (!wikitext) {
-      return 0;
+      bookQuotes.set(book.page, []);
+      return [];
     }
 
     const quotes = extractQuotes(wikitext);
-    if (quotes.length === 0) {
-      return 0;
-    }
-
     const sourceUrl = `https://en.wikiquote.org/wiki/${encodeURIComponent(book.page)}`;
     const prepared = quotes.map((text) => ({
       text,
@@ -863,24 +870,27 @@ async function loadNextBook() {
       sourceUrl
     }));
 
-    quotePool.push(...shuffle(prepared));
-    return prepared.length;
+    bookQuotes.set(book.page, prepared);
+    return prepared;
   } catch (error) {
-    return 0;
+    bookQuotes.set(book.page, []);
+    return [];
   }
 }
 
-async function ensureQuotes(minCount) {
-  while (quotePool.length < minCount && bookQueue.length > 0) {
-    await loadNextBook();
+async function getNextBookWithQuotes() {
+  const maxAttempts = books.length * 2;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const book = nextBook();
+    if (!book) {
+      return null;
+    }
+    const quotes = await getBookQuotes(book);
+    if (quotes.length > 0) {
+      return { book, quotes };
+    }
   }
-}
-
-async function getQuote() {
-  if (quotePool.length === 0) {
-    await ensureQuotes(1);
-  }
-  return quotePool.pop();
+  return null;
 }
 
 function applyQuote(reel, quote) {
@@ -915,12 +925,65 @@ function fitQuote(reel) {
   return blockquote.scrollHeight <= quoteText.clientHeight;
 }
 
-async function createReel() {
-  const quote = await getQuote();
-  if (!quote) {
-    return null;
+function pickDifferentIndex(quotes, currentIndex) {
+  if (quotes.length <= 1) {
+    return currentIndex;
   }
 
+  let nextIndex = currentIndex;
+  while (nextIndex === currentIndex) {
+    nextIndex = Math.floor(Math.random() * quotes.length);
+  }
+  return nextIndex;
+}
+
+function setQuoteForReel(reel, quotes, preferredIndex) {
+  if (!quotes || quotes.length === 0) {
+    return false;
+  }
+
+  const tried = new Set();
+  let index = typeof preferredIndex === 'number'
+    ? preferredIndex
+    : Math.floor(Math.random() * quotes.length);
+  const maxAttempts = Math.min(quotes.length, 10);
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (tried.has(index)) {
+      index = Math.floor(Math.random() * quotes.length);
+      continue;
+    }
+
+    tried.add(index);
+    applyQuote(reel, quotes[index]);
+
+    if (fitQuote(reel)) {
+      reel.dataset.quoteIndex = String(index);
+      return true;
+    }
+
+    index = Math.floor(Math.random() * quotes.length);
+  }
+
+  let shortestIndex = 0;
+  let shortestLength = Infinity;
+  quotes.forEach((quote, quoteIndex) => {
+    if (quote.text.length < shortestLength) {
+      shortestLength = quote.text.length;
+      shortestIndex = quoteIndex;
+    }
+  });
+
+  applyQuote(reel, quotes[shortestIndex]);
+  if (fitQuote(reel)) {
+    reel.dataset.quoteIndex = String(shortestIndex);
+    return true;
+  }
+
+  return false;
+}
+
+function buildReelShell() {
   const reel = document.createElement('article');
   reel.className = 'reel';
   reel.dataset.duration = String(getDuration());
@@ -976,25 +1039,47 @@ async function createReel() {
     `)
   );
 
-  let attempts = 0;
-  let fitted = false;
-  let currentQuote = quote;
+  return reel;
+}
 
-  while (!fitted && attempts < 4) {
-    applyQuote(reel, currentQuote);
-    fitted = fitQuote(reel);
+async function createReel() {
+  const maxAttempts = books.length * 2;
 
-    if (!fitted) {
-      currentQuote = await getQuote();
-      if (!currentQuote) {
-        break;
-      }
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const candidate = await getNextBookWithQuotes();
+    if (!candidate) {
+      return null;
     }
 
-    attempts += 1;
+    const { book, quotes } = candidate;
+    const reel = buildReelShell();
+    reel.dataset.bookPage = book.page;
+
+    const filled = setQuoteForReel(reel, quotes);
+    if (!filled) {
+      continue;
+    }
+
+    reel.addEventListener('click', (event) => {
+      if (event.target.closest('a,button')) {
+        return;
+      }
+
+      const page = reel.dataset.bookPage;
+      const storedQuotes = bookQuotes.get(page) || [];
+      if (storedQuotes.length === 0) {
+        return;
+      }
+
+      const currentIndex = Number(reel.dataset.quoteIndex || 0);
+      const nextIndex = pickDifferentIndex(storedQuotes, currentIndex);
+      setQuoteForReel(reel, storedQuotes, nextIndex);
+    });
+
+    return reel;
   }
 
-  return reel;
+  return null;
 }
 
 async function addReels(count) {
@@ -1003,7 +1088,6 @@ async function addReels(count) {
   }
 
   isAdding = true;
-  await ensureQuotes(count);
   let added = 0;
 
   for (let i = 0; i < count; i += 1) {
@@ -1079,7 +1163,7 @@ const sentinelObserver = new IntersectionObserver((entries) => {
 }, { root: feed, rootMargin: '500px' });
 
 async function init() {
-  bookQueue = shuffle(books);
+  refillBookQueue();
   sentinel.className = 'sentinel';
   feed.appendChild(sentinel);
   await addReels(6);
