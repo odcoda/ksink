@@ -28,3 +28,12 @@ Built a short-form literature feed:
 - Curated classic literature quotes linked to Wikiquote
 Up next:
 - Add a simple search/filter for authors
+
+## 2026-01-06 live wikiquote feed
+
+Switched the reels tool to live data:
+- Fetch quotes from Wikiquote with a fixed classics list
+- Auto-fit long excerpts into the quote card
+- Added randomized typographic treatments and card palettes
+Up next:
+- Add an author search or filter

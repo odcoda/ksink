@@ -36,6 +36,7 @@ body {
 }
 
 .feed {
+  position: relative;
   height: 100vh;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
@@ -45,6 +46,34 @@ body {
 .feed::-webkit-scrollbar {
   width: 0;
   height: 0;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 0 24px;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+  background: rgba(6, 7, 10, 0.6);
+  z-index: 4;
+}
+
+.loading.hidden {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.loading .title {
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 12px;
 }
 
 .reel {
@@ -91,12 +120,17 @@ body {
 
 .quote-card {
   position: relative;
-  background: var(--paper);
-  color: #1c1b1f;
+  height: min(72vh, 560px);
+  background: linear-gradient(160deg, var(--paper) 0%, var(--paper-alt, #f7f1e7) 100%);
+  color: var(--ink);
   padding: 38px 36px 30px;
   border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--card-border, rgba(255, 255, 255, 0.4));
   box-shadow: 0 28px 60px var(--shadow), 0 0 0 1px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: hidden;
 }
 
 .quote-card::before {
@@ -110,46 +144,56 @@ body {
 
 .quote-mark {
   font-size: 64px;
-  line-height: 1;
-  color: var(--accent);
+  line-height: 0.9;
+  color: var(--mark, var(--accent));
+}
+
+.quote-text {
+  flex: 1;
+  overflow: hidden;
 }
 
 blockquote {
-  margin: 12px 0 0;
-  font-size: clamp(1.5rem, 2.3vw + 1.2rem, 2.7rem);
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: 0.01em;
+  margin: 0;
+  font-size: var(--quote-size, 34px);
+  font-weight: var(--quote-weight, 600);
+  line-height: var(--quote-line, 1.25);
+  letter-spacing: var(--quote-spacing, 0.01em);
+  font-style: var(--quote-style, normal);
+  font-variant: var(--quote-variant, normal);
+  text-align: var(--quote-align, left);
+  color: var(--quote-ink, var(--ink));
+  text-shadow: var(--quote-shadow, none);
 }
 
 .quote-meta {
-  margin-top: 20px;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 0.95rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #3f3a33;
+  color: var(--meta-ink, #3f3a33);
 }
 
 .quote-meta .work {
   text-transform: none;
   letter-spacing: 0.02em;
   font-size: 0.9rem;
-  color: #5a5146;
+  color: var(--meta-work, #5a5146);
 }
 
 .quote-meta a {
   text-decoration: none;
-  color: #a45a14;
+  color: var(--link-ink, #a45a14);
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.12em;
 }
 
 .quote-meta a:hover {
-  color: #7c3d0a;
+  color: var(--link-hover, #7c3d0a);
 }
 
 .reel-actions {
@@ -348,6 +392,7 @@ blockquote {
   }
 
   .quote-card {
+    height: min(70vh, 520px);
     padding: 32px 28px 26px;
   }
 
@@ -385,7 +430,14 @@ blockquote {
       </div>
     </header>
 
-    <main class="feed" id="feed" aria-live="polite"></main>
+    <main class="feed" id="feed" aria-live="polite">
+      <div class="loading" id="loading">
+        <div>
+          <div class="title">Summoning the canon</div>
+          Fetching live quotes from Wikiquote
+        </div>
+      </div>
+    </main>
 
     <nav class="bottom-nav">
       <div class="nav-item active">
@@ -435,137 +487,188 @@ blockquote {
   </div>
 
   <script type="module">
+// code in here should not be indented at the first level
 const feed = document.getElementById('feed');
+const loading = document.getElementById('loading');
 
-const quotes = [
-  {
-    text: 'It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness.',
-    author: 'Charles Dickens',
-    work: 'A Tale of Two Cities',
-    sourceUrl: 'https://en.wikiquote.org/wiki/A_Tale_of_Two_Cities'
-  },
-  {
-    text: 'Call me Ishmael.',
-    author: 'Herman Melville',
-    work: 'Moby-Dick',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Moby-Dick'
-  },
-  {
-    text: 'All happy families are alike; each unhappy family is unhappy in its own way.',
-    author: 'Leo Tolstoy',
-    work: 'Anna Karenina',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Anna_Karenina'
-  },
-  {
-    text: 'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.',
-    author: 'Jane Austen',
-    work: 'Pride and Prejudice',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Pride_and_Prejudice'
-  },
-  {
-    text: 'I am no bird; and no net ensnares me: I am a free human being with an independent will.',
-    author: 'Charlotte Bronte',
-    work: 'Jane Eyre',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Jane_Eyre'
-  },
-  {
-    text: 'Whatever our souls are made of, his and mine are the same.',
-    author: 'Emily Bronte',
-    work: 'Wuthering Heights',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Wuthering_Heights'
-  },
-  {
-    text: 'Beware; for I am fearless, and therefore powerful.',
-    author: 'Mary Shelley',
-    work: 'Frankenstein',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Frankenstein'
-  },
-  {
-    text: 'The only way to get rid of a temptation is to yield to it.',
-    author: 'Oscar Wilde',
-    work: 'The Picture of Dorian Gray',
-    sourceUrl: 'https://en.wikiquote.org/wiki/The_Picture_of_Dorian_Gray'
-  },
-  {
-    text: 'To be, or not to be, that is the question.',
-    author: 'William Shakespeare',
-    work: 'Hamlet',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Hamlet'
-  },
-  {
-    text: 'All the world\'s a stage, and all the men and women merely players.',
-    author: 'William Shakespeare',
-    work: 'As You Like It',
-    sourceUrl: 'https://en.wikiquote.org/wiki/As_You_Like_It'
-  },
-  {
-    text: 'All animals are equal, but some animals are more equal than others.',
-    author: 'George Orwell',
-    work: 'Animal Farm',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Animal_Farm'
-  },
-  {
-    text: 'Big Brother is watching you.',
-    author: 'George Orwell',
-    work: 'Nineteen Eighty-Four',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Nineteen_Eighty-Four'
-  },
-  {
-    text: 'So we beat on, boats against the current, borne back ceaselessly into the past.',
-    author: 'F. Scott Fitzgerald',
-    work: 'The Great Gatsby',
-    sourceUrl: 'https://en.wikiquote.org/wiki/The_Great_Gatsby'
-  },
-  {
-    text: 'It was a pleasure to burn.',
-    author: 'Ray Bradbury',
-    work: 'Fahrenheit 451',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Fahrenheit_451'
-  },
-  {
-    text: 'All right, then, I\'ll go to hell.',
-    author: 'Mark Twain',
-    work: 'Adventures of Huckleberry Finn',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Adventures_of_Huckleberry_Finn'
-  },
-  {
-    text: 'There is no charm equal to tenderness of heart.',
-    author: 'Jane Austen',
-    work: 'Emma',
-    sourceUrl: 'https://en.wikiquote.org/wiki/Emma'
-  }
+const books = [
+  { title: 'A Tale of Two Cities', author: 'Charles Dickens', page: 'A_Tale_of_Two_Cities' },
+  { title: 'Moby-Dick', author: 'Herman Melville', page: 'Moby-Dick' },
+  { title: 'Anna Karenina', author: 'Leo Tolstoy', page: 'Anna_Karenina' },
+  { title: 'Pride and Prejudice', author: 'Jane Austen', page: 'Pride_and_Prejudice' },
+  { title: 'Jane Eyre', author: 'Charlotte Bronte', page: 'Jane_Eyre' },
+  { title: 'Wuthering Heights', author: 'Emily Bronte', page: 'Wuthering_Heights' },
+  { title: 'Frankenstein', author: 'Mary Shelley', page: 'Frankenstein' },
+  { title: 'The Picture of Dorian Gray', author: 'Oscar Wilde', page: 'The_Picture_of_Dorian_Gray' },
+  { title: 'Hamlet', author: 'William Shakespeare', page: 'Hamlet' },
+  { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', page: 'The_Great_Gatsby' },
+  { title: 'Fahrenheit 451', author: 'Ray Bradbury', page: 'Fahrenheit_451' },
+  { title: 'Adventures of Huckleberry Finn', author: 'Mark Twain', page: 'Adventures_of_Huckleberry_Finn' },
+  { title: 'Crime and Punishment', author: 'Fyodor Dostoevsky', page: 'Crime_and_Punishment' },
+  { title: 'The Brothers Karamazov', author: 'Fyodor Dostoevsky', page: 'The_Brothers_Karamazov' },
+  { title: 'The Odyssey', author: 'Homer', page: 'The_Odyssey' },
+  { title: 'The Count of Monte Cristo', author: 'Alexandre Dumas', page: 'The_Count_of_Monte_Cristo' },
+  { title: 'Les Miserables', author: 'Victor Hugo', page: 'Les_Miserables' },
+  { title: 'Great Expectations', author: 'Charles Dickens', page: 'Great_Expectations' },
+  { title: 'The Grapes of Wrath', author: 'John Steinbeck', page: 'The_Grapes_of_Wrath' },
+  { title: 'Dracula', author: 'Bram Stoker', page: 'Dracula' }
 ];
 
 const themes = [
   {
     accent: '#f1b964',
     accentSoft: 'rgba(241, 185, 100, 0.3)',
-    paper: 'rgba(247, 241, 231, 0.95)',
+    paper: '#f7f1e7',
+    paperAlt: '#efe2d0',
+    ink: '#2c2116',
+    mark: '#d08a3b',
+    metaInk: '#4c3b2b',
+    metaWork: '#6a5946',
+    link: '#a45a14',
+    linkHover: '#7c3d0a',
+    border: 'rgba(255, 255, 255, 0.5)',
+    shadow: 'rgba(8, 6, 5, 0.55)',
     backdrop: 'radial-gradient(circle at 15% 20%, #263041 0%, #131722 55%, #0a0c12 100%)'
   },
   {
     accent: '#d08a5b',
     accentSoft: 'rgba(208, 138, 91, 0.3)',
-    paper: 'rgba(247, 238, 226, 0.96)',
+    paper: '#f3e7d6',
+    paperAlt: '#e9d7c1',
+    ink: '#2f2018',
+    mark: '#b8683d',
+    metaInk: '#4b3529',
+    metaWork: '#6a5246',
+    link: '#9a4d22',
+    linkHover: '#6e3714',
+    border: 'rgba(255, 255, 255, 0.42)',
+    shadow: 'rgba(8, 4, 2, 0.6)',
     backdrop: 'radial-gradient(circle at 70% 20%, #2e2a24 0%, #151310 55%, #090807 100%)'
   },
   {
     accent: '#8fbad6',
     accentSoft: 'rgba(143, 186, 214, 0.3)',
-    paper: 'rgba(240, 244, 246, 0.94)',
+    paper: '#eef3f5',
+    paperAlt: '#e4edf2',
+    ink: '#1f2b36',
+    mark: '#4f86a4',
+    metaInk: '#30404d',
+    metaWork: '#4c5a66',
+    link: '#2c5f7b',
+    linkHover: '#1f4356',
+    border: 'rgba(255, 255, 255, 0.45)',
+    shadow: 'rgba(5, 7, 10, 0.55)',
     backdrop: 'radial-gradient(circle at 20% 70%, #1b2a35 0%, #0e141b 55%, #07090c 100%)'
   },
   {
     accent: '#c7a073',
     accentSoft: 'rgba(199, 160, 115, 0.35)',
-    paper: 'rgba(249, 242, 231, 0.95)',
+    paper: '#f2ead9',
+    paperAlt: '#e8dcc4',
+    ink: '#2b2318',
+    mark: '#a07a50',
+    metaInk: '#4d3d2d',
+    metaWork: '#6a5845',
+    link: '#8a5d34',
+    linkHover: '#64421f',
+    border: 'rgba(255, 255, 255, 0.35)',
+    shadow: 'rgba(7, 6, 4, 0.6)',
     backdrop: 'radial-gradient(circle at 80% 30%, #2a2b2e 0%, #151619 55%, #0b0c0f 100%)'
+  },
+  {
+    accent: '#b8b6b2',
+    accentSoft: 'rgba(184, 182, 178, 0.35)',
+    paper: '#f4f2ee',
+    paperAlt: '#e7e3dc',
+    ink: '#272427',
+    mark: '#848079',
+    metaInk: '#3f3c40',
+    metaWork: '#5f5a5e',
+    link: '#6a5b54',
+    linkHover: '#4f3f38',
+    border: 'rgba(255, 255, 255, 0.32)',
+    shadow: 'rgba(6, 6, 7, 0.55)',
+    backdrop: 'radial-gradient(circle at 20% 30%, #2f2c31 0%, #17161b 55%, #0b0b10 100%)'
+  },
+  {
+    accent: '#a3b49c',
+    accentSoft: 'rgba(163, 180, 156, 0.32)',
+    paper: '#eef1e7',
+    paperAlt: '#e1e7d6',
+    ink: '#273125',
+    mark: '#6c8a63',
+    metaInk: '#40503c',
+    metaWork: '#5c6c56',
+    link: '#4e6d44',
+    linkHover: '#3a5232',
+    border: 'rgba(255, 255, 255, 0.38)',
+    shadow: 'rgba(4, 6, 4, 0.55)',
+    backdrop: 'radial-gradient(circle at 30% 25%, #2a3026 0%, #151812 55%, #0b0d09 100%)'
   }
 ];
 
+const textVariants = [
+  {
+    size: 40,
+    weight: 600,
+    spacing: '0.01em',
+    line: 1.22,
+    style: 'normal',
+    variant: 'normal',
+    align: 'left',
+    shadow: 'none'
+  },
+  {
+    size: 36,
+    weight: 500,
+    spacing: '0.02em',
+    line: 1.3,
+    style: 'italic',
+    variant: 'normal',
+    align: 'left',
+    shadow: '0 14px 26px rgba(0, 0, 0, 0.08)'
+  },
+  {
+    size: 34,
+    weight: 700,
+    spacing: '0.04em',
+    line: 1.18,
+    style: 'normal',
+    variant: 'small-caps',
+    align: 'left',
+    shadow: 'none'
+  },
+  {
+    size: 38,
+    weight: 550,
+    spacing: '0.015em',
+    line: 1.28,
+    style: 'normal',
+    variant: 'normal',
+    align: 'left',
+    shadow: '0 18px 30px rgba(0, 0, 0, 0.12)'
+  },
+  {
+    size: 35,
+    weight: 600,
+    spacing: '0.03em',
+    line: 1.24,
+    style: 'normal',
+    variant: 'normal',
+    align: 'center',
+    shadow: 'none'
+  }
+];
+
+const MAX_WORDS = 500;
+const MIN_WORDS = 4;
+const MIN_FONT_SIZE = 16;
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 let autoAdvanceTimer = null;
 let quotePool = [];
+let bookQueue = [];
+let isAdding = false;
 
 function shuffle(list) {
   const array = [...list];
@@ -576,11 +679,90 @@ function shuffle(list) {
   return array;
 }
 
-function nextQuote() {
-  if (quotePool.length === 0) {
-    quotePool = shuffle(quotes);
+function wordCount(text) {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+function normalizeText(text) {
+  return text
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[—–]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function stripTemplates(text) {
+  let cleaned = text;
+  let previous;
+  do {
+    previous = cleaned;
+    cleaned = cleaned.replace(/\{\{[^{}]*\}\}/g, ' ');
+  } while (cleaned !== previous);
+  return cleaned;
+}
+
+function cleanLine(line) {
+  let text = line.replace(/^\*+/, '').trim();
+  if (!text || text.startsWith(':') || text.startsWith('#')) {
+    return '';
   }
-  return quotePool.pop();
+
+  text = stripTemplates(text);
+  text = text
+    .replace(/<ref[^>]*>.*?<\/ref>/gi, ' ')
+    .replace(/<ref[^/>]*\/>/gi, ' ')
+    .replace(/<!--.*?-->/g, ' ')
+    .replace(/<\/?.*?poem[^>]*>/gi, ' ')
+    .replace(/<\/?.*?blockquote[^>]*>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/\[\[(?:[^|\]]*\|)?([^\]]+)\]\]/g, '$1')
+    .replace(/\[https?:\/\/[^\s\]]+\s([^\]]+)\]/g, '$1')
+    .replace(/\[https?:\/\/[^\]]+\]/g, ' ')
+    .replace(/''+/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&mdash;|&ndash;/g, '-')
+    .replace(/&amp;/g, '&');
+
+  text = normalizeText(text);
+
+  if (text.includes('ISBN') || text.includes('citation needed')) {
+    return '';
+  }
+
+  return text;
+}
+
+function extractQuotes(wikitext) {
+  const results = [];
+  const seen = new Set();
+  const lines = wikitext.split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('*')) {
+      continue;
+    }
+
+    const text = cleanLine(trimmed);
+    if (!text || seen.has(text)) {
+      continue;
+    }
+
+    const count = wordCount(text);
+    if (count < MIN_WORDS || count > MAX_WORDS) {
+      continue;
+    }
+
+    if (text.length < 12) {
+      continue;
+    }
+
+    seen.add(text);
+    results.push(text);
+  }
+
+  return results;
 }
 
 function formatCount() {
@@ -605,23 +787,153 @@ function createActionButton(label, count, icon) {
   return button;
 }
 
-function createReel() {
-  const quote = nextQuote();
+function setReelTheme(reel) {
   const theme = themes[Math.floor(Math.random() * themes.length)];
-  const reel = document.createElement('article');
-  reel.className = 'reel';
-  reel.dataset.duration = String(getDuration());
+  const variant = textVariants[Math.floor(Math.random() * textVariants.length)];
+  const inkShift = Math.random() > 0.5 ? theme.ink : '#1f1f1f';
+
   reel.style.setProperty('--accent', theme.accent);
   reel.style.setProperty('--accent-soft', theme.accentSoft);
   reel.style.setProperty('--paper', theme.paper);
+  reel.style.setProperty('--paper-alt', theme.paperAlt);
+  reel.style.setProperty('--ink', theme.ink);
+  reel.style.setProperty('--mark', theme.mark);
+  reel.style.setProperty('--meta-ink', theme.metaInk);
+  reel.style.setProperty('--meta-work', theme.metaWork);
+  reel.style.setProperty('--link-ink', theme.link);
+  reel.style.setProperty('--link-hover', theme.linkHover);
+  reel.style.setProperty('--card-border', theme.border);
+  reel.style.setProperty('--shadow', theme.shadow);
   reel.style.setProperty('--backdrop', theme.backdrop);
+
+  reel.style.setProperty('--quote-size', `${variant.size}px`);
+  reel.style.setProperty('--quote-weight', variant.weight);
+  reel.style.setProperty('--quote-spacing', variant.spacing);
+  reel.style.setProperty('--quote-line', variant.line);
+  reel.style.setProperty('--quote-style', variant.style);
+  reel.style.setProperty('--quote-variant', variant.variant);
+  reel.style.setProperty('--quote-align', variant.align);
+  reel.style.setProperty('--quote-shadow', variant.shadow);
+  reel.style.setProperty('--quote-ink', inkShift);
+
+  reel.dataset.baseSize = String(variant.size);
+}
+
+async function fetchWikiquote(book) {
+  const url = new URL('https://en.wikiquote.org/w/api.php');
+  url.search = new URLSearchParams({
+    action: 'parse',
+    page: book.page,
+    prop: 'wikitext',
+    format: 'json',
+    origin: '*'
+  }).toString();
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    return '';
+  }
+
+  const data = await response.json();
+  return data?.parse?.wikitext?.['*'] || '';
+}
+
+async function loadNextBook() {
+  const book = bookQueue.shift();
+  if (!book) {
+    return 0;
+  }
+
+  try {
+    const wikitext = await fetchWikiquote(book);
+    if (!wikitext) {
+      return 0;
+    }
+
+    const quotes = extractQuotes(wikitext);
+    if (quotes.length === 0) {
+      return 0;
+    }
+
+    const sourceUrl = `https://en.wikiquote.org/wiki/${encodeURIComponent(book.page)}`;
+    const prepared = quotes.map((text) => ({
+      text,
+      author: book.author,
+      work: book.title,
+      sourceUrl
+    }));
+
+    quotePool.push(...shuffle(prepared));
+    return prepared.length;
+  } catch (error) {
+    return 0;
+  }
+}
+
+async function ensureQuotes(minCount) {
+  while (quotePool.length < minCount && bookQueue.length > 0) {
+    await loadNextBook();
+  }
+}
+
+async function getQuote() {
+  if (quotePool.length === 0) {
+    await ensureQuotes(1);
+  }
+  return quotePool.pop();
+}
+
+function applyQuote(reel, quote) {
+  if (!quote) {
+    return;
+  }
+
+  reel.querySelector('blockquote').textContent = quote.text;
+  reel.querySelector('.author').textContent = quote.author;
+  reel.querySelector('.work').textContent = quote.work;
+  reel.querySelector('.source-link').href = quote.sourceUrl;
+
+  const captions = reel.querySelectorAll('.caption');
+  if (captions[0]) {
+    captions[0].textContent = `${quote.work} - ${quote.author}`;
+  }
+}
+
+function fitQuote(reel) {
+  const quoteText = reel.querySelector('.quote-text');
+  const blockquote = reel.querySelector('blockquote');
+  const baseSize = Number(reel.dataset.baseSize || 34);
+
+  let size = baseSize;
+  blockquote.style.fontSize = `${size}px`;
+
+  while (blockquote.scrollHeight > quoteText.clientHeight && size > MIN_FONT_SIZE) {
+    size -= 1;
+    blockquote.style.fontSize = `${size}px`;
+  }
+
+  return blockquote.scrollHeight <= quoteText.clientHeight;
+}
+
+async function createReel() {
+  const quote = await getQuote();
+  if (!quote) {
+    return null;
+  }
+
+  const reel = document.createElement('article');
+  reel.className = 'reel';
+  reel.dataset.duration = String(getDuration());
+  setReelTheme(reel);
 
   reel.innerHTML = `
     <div class="grain"></div>
     <div class="quote-stage">
       <div class="quote-card">
         <div class="quote-mark">"</div>
-        <blockquote></blockquote>
+        <div class="quote-text">
+          <blockquote></blockquote>
+        </div>
         <div class="quote-meta">
           <span class="author"></span>
           <span class="work"></span>
@@ -637,12 +949,6 @@ function createReel() {
     <div class="reel-actions"></div>
     <div class="progress"><span class="progress-bar"></span></div>
   `;
-
-  reel.querySelector('blockquote').textContent = quote.text;
-  reel.querySelector('.author').textContent = quote.author;
-  reel.querySelector('.work').textContent = quote.work;
-  reel.querySelector('.source-link').href = quote.sourceUrl;
-  reel.querySelector('.caption').textContent = `${quote.work} - ${quote.author}`;
 
   const actions = reel.querySelector('.reel-actions');
   actions.append(
@@ -670,15 +976,52 @@ function createReel() {
     `)
   );
 
+  let attempts = 0;
+  let fitted = false;
+  let currentQuote = quote;
+
+  while (!fitted && attempts < 4) {
+    applyQuote(reel, currentQuote);
+    fitted = fitQuote(reel);
+
+    if (!fitted) {
+      currentQuote = await getQuote();
+      if (!currentQuote) {
+        break;
+      }
+    }
+
+    attempts += 1;
+  }
+
   return reel;
 }
 
-function addReels(count) {
+async function addReels(count) {
+  if (isAdding) {
+    return;
+  }
+
+  isAdding = true;
+  await ensureQuotes(count);
+  let added = 0;
+
   for (let i = 0; i < count; i += 1) {
-    const reel = createReel();
+    const reel = await createReel();
+    if (!reel) {
+      break;
+    }
     feed.insertBefore(reel, sentinel);
     reelObserver.observe(reel);
+    added += 1;
   }
+
+  if (added === 0 && loading) {
+    loading.classList.remove('hidden');
+    loading.innerHTML = '<div><div class="title">No quotes found</div>Wikiquote did not respond</div>';
+  }
+
+  isAdding = false;
 }
 
 function getNextReel(current) {
@@ -735,11 +1078,25 @@ const sentinelObserver = new IntersectionObserver((entries) => {
   });
 }, { root: feed, rootMargin: '500px' });
 
-sentinel.className = 'sentinel';
-feed.appendChild(sentinel);
-addReels(6);
-setActive(feed.querySelector('.reel'));
-sentinelObserver.observe(sentinel);
+async function init() {
+  bookQueue = shuffle(books);
+  sentinel.className = 'sentinel';
+  feed.appendChild(sentinel);
+  await addReels(6);
+
+  const firstReel = feed.querySelector('.reel');
+  if (firstReel) {
+    setActive(firstReel);
+  }
+
+  if (loading) {
+    loading.classList.add('hidden');
+  }
+
+  sentinelObserver.observe(sentinel);
+}
+
+init();
   </script>
 </body>
 </html>
