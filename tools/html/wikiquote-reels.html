@@ -733,10 +733,11 @@ function cleanLine(line) {
   return text;
 }
 
-function extractQuotes(wikitext) {
+function extractQuotes(wikitext, bookTitle = '') {
   const results = [];
   const seen = new Set();
   const lines = wikitext.split('\n');
+  const titleLower = bookTitle.toLowerCase();
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -750,6 +751,13 @@ function extractQuotes(wikitext) {
     }
 
     const count = wordCount(text);
+    if (count < 20) {
+      const hasMarker = /(?:\bCh\.|\bChapter\b|\bp\.|\bProject Gutenberg\b)/i.test(text);
+      const hasTitle = titleLower && text.toLowerCase().includes(titleLower);
+      if (hasMarker || hasTitle) {
+        continue;
+      }
+    }
     if (count < MIN_WORDS || count > MAX_WORDS) {
       continue;
     }
@@ -861,7 +869,7 @@ async function getBookQuotes(book) {
       return [];
     }
 
-    const quotes = extractQuotes(wikitext);
+    const quotes = extractQuotes(wikitext, book.title);
     const sourceUrl = `https://en.wikiquote.org/wiki/${encodeURIComponent(book.page)}`;
     const prepared = quotes.map((text) => ({
       text,

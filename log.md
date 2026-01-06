@@ -46,3 +46,11 @@ Updated the reels behavior:
 - Skips books with no usable quotes
 Up next:
 - Add an author search or filter
+
+## 2026-01-06 parser filter patch
+
+Filtered short source-like lines:
+- Skip short lines with chapter/page markers or Project Gutenberg
+- Skip short lines that only echo the book title
+Up next:
+- Add an author search or filter
