@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Timeline Estimator</title>
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+  transition: background 0.5s, color 0.5s;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  text-align: center;
+  opacity: 0.8;
+  margin-bottom: 30px;
+}
+
+.panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+@media (max-width: 700px) {
+  .panel {
+    grid-template-columns: 1fr;
+  }
+}
+
+.controls {
+  padding: 20px;
+  border-radius: 12px;
+  transition: background 0.5s;
+}
+
+.slider-group {
+  margin-bottom: 20px;
+}
+
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.slider-label .emoji {
+  font-size: 18px;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  appearance: none;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid currentColor;
+  cursor: pointer;
+}
+
+.chart-container {
+  position: relative;
+}
+
+canvas {
+  width: 100%;
+  height: 350px;
+  border-radius: 12px;
+  transition: background 0.5s;
+}
+
+.result {
+  text-align: center;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 20px;
+  transition: background 0.5s;
+}
+
+.result-year {
+  font-size: 48px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+.result-label {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.mood-emoji {
+  font-size: 64px;
+  margin-bottom: 10px;
+}
+
+.disclaimer {
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 30px;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 AI Timeline Estimator</h1>
+    <p class="subtitle">Adjust parameters to see when things get... interesting</p>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-group">
+          <div class="slider-label">
+            <span><span class="emoji">🖥️</span> Compute Scaling</span>
+            <span id="compute-val">50%</span>
+          </div>
+          <input type="range" id="compute" min="0" max="100" value="50">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span><span class="emoji">🧠</span> Algorithmic Progress</span>
+            <span id="algo-val">50%</span>
+          </div>
+          <input type="range" id="algo" min="0" max="100" value="50">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span><span class="emoji">💰</span> Investment Intensity</span>
+            <span id="invest-val">50%</span>
+          </div>
+          <input type="range" id="invest" min="0" max="100" value="50">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span><span class="emoji">🏛️</span> Regulatory Friction</span>
+            <span id="regulation-val">50%</span>
+          </div>
+          <input type="range" id="regulation" min="0" max="100" value="50">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span><span class="emoji">🤝</span> Lab Coordination</span>
+            <span id="coordination-val">50%</span>
+          </div>
+          <input type="range" id="coordination" min="0" max="100" value="50">
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+
+    <div class="result">
+      <div class="mood-emoji" id="mood">🤔</div>
+      <div class="result-label">Estimated AGI Arrival</div>
+      <div class="result-year" id="year">2035</div>
+      <div class="result-label" id="message">Buckle up...</div>
+    </div>
+
+    <p class="disclaimer">⚠️ This is a toy model for entertainment only. Real AI timelines are deeply uncertain.</p>
+  </div>
+
+  <script type="module">
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+
+const sliders = {
+  compute: document.getElementById('compute'),
+  algo: document.getElementById('algo'),
+  invest: document.getElementById('invest'),
+  regulation: document.getElementById('regulation'),
+  coordination: document.getElementById('coordination')
+};
+
+const displays = {
+  compute: document.getElementById('compute-val'),
+  algo: document.getElementById('algo-val'),
+  invest: document.getElementById('invest-val'),
+  regulation: document.getElementById('regulation-val'),
+  coordination: document.getElementById('coordination-val')
+};
+
+const yearEl = document.getElementById('year');
+const moodEl = document.getElementById('mood');
+const messageEl = document.getElementById('message');
+
+function calculateTimeline() {
+  const compute = parseInt(sliders.compute.value);
+  const algo = parseInt(sliders.algo.value);
+  const invest = parseInt(sliders.invest.value);
+  const regulation = parseInt(sliders.regulation.value);
+  const coordination = parseInt(sliders.coordination.value);
+
+  // Accelerators push timeline earlier
+  const accelerators = (compute * 0.3 + algo * 0.3 + invest * 0.2) / 100;
+
+  // Coordination slows things down (safety), regulation adds friction
+  const decelerators = (regulation * 0.15 + coordination * 0.15) / 100;
+
+  // Base year 2040, can range from ~2026 to ~2060
+  const baseYear = 2040;
+  const acceleration = accelerators * 15; // Up to 15 years earlier
+  const deceleration = decelerators * 20; // Up to 20 years later
+
+  const year = Math.round(baseYear - acceleration + deceleration);
+  return Math.max(2026, Math.min(2060, year));
+}
+
+function getMood(year) {
+  if (year <= 2027) return { emoji: '😱', message: 'WE ARE SO BACK (or so cooked)', bg: '#1a0a0a', accent: '#ff3333', controlsBg: 'rgba(255,50,50,0.15)' };
+  if (year <= 2030) return { emoji: '😰', message: 'Hope you have your affairs in order...', bg: '#1a1008', accent: '#ff6600', controlsBg: 'rgba(255,100,0,0.15)' };
+  if (year <= 2035) return { emoji: '😬', message: 'Time to start preparing', bg: '#1a1a08', accent: '#ccaa00', controlsBg: 'rgba(200,170,0,0.15)' };
+  if (year <= 2040) return { emoji: '🤔', message: 'A reasonable timeline', bg: '#0a1a0a', accent: '#66aa44', controlsBg: 'rgba(100,170,70,0.15)' };
+  if (year <= 2050) return { emoji: '😌', message: 'Plenty of time to figure things out', bg: '#081a18', accent: '#44aaaa', controlsBg: 'rgba(70,170,170,0.15)' };
+  return { emoji: '🌴', message: 'Retirement secured!', bg: '#080a1a', accent: '#6688ff', controlsBg: 'rgba(100,130,255,0.15)' };
+}
+
+function drawChart(year) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const mood = getMood(year);
+
+  const padding = { top: 30, right: 30, bottom: 50, left: 60 };
+  const chartW = w - padding.left - padding.right;
+  const chartH = h - padding.top - padding.bottom;
+
+  // Clear
+  ctx.fillStyle = mood.bg;
+  ctx.fillRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (chartH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(w - padding.right, y);
+    ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, h - padding.bottom);
+  ctx.lineTo(w - padding.right, h - padding.bottom);
+  ctx.stroke();
+
+  // X axis labels (years)
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '12px Helvetica';
+  ctx.textAlign = 'center';
+  const years = [2025, 2030, 2040, 2050, 2060];
+  years.forEach(y => {
+    const x = padding.left + ((y - 2025) / 35) * chartW;
+    ctx.fillText(y.toString(), x, h - padding.bottom + 20);
+  });
+
+  // Y axis labels
+  ctx.textAlign = 'right';
+  const levels = ['Human', 'AGI', 'ASI'];
+  levels.forEach((label, i) => {
+    const y = padding.top + chartH - (chartH / 3) * (i + 0.5);
+    ctx.fillText(label, padding.left - 10, y + 4);
+  });
+
+  // Hockey stick curve
+  const curveYear = year;
+  ctx.beginPath();
+  ctx.strokeStyle = mood.accent;
+  ctx.lineWidth = 3;
+
+  for (let x = 0; x <= chartW; x++) {
+    const yearAtX = 2025 + (x / chartW) * 35;
+    const yearsUntilAGI = curveYear - 2025;
+
+    // Exponential curve that reaches "AGI" level at the predicted year
+    let capability;
+    if (yearAtX <= curveYear) {
+      const progress = (yearAtX - 2025) / yearsUntilAGI;
+      capability = 0.1 + 0.5 * Math.pow(progress, 2.5);
+    } else {
+      const postProgress = (yearAtX - curveYear) / 5;
+      capability = 0.6 + 0.4 * (1 - Math.exp(-postProgress * 2));
+    }
+
+    const px = padding.left + x;
+    const py = padding.top + chartH * (1 - capability);
+
+    if (x === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // Glow effect
+  ctx.shadowColor = mood.accent;
+  ctx.shadowBlur = 15;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // AGI point marker
+  const agiX = padding.left + ((curveYear - 2025) / 35) * chartW;
+  const agiY = padding.top + chartH * 0.4;
+
+  ctx.beginPath();
+  ctx.arc(agiX, agiY, 8, 0, Math.PI * 2);
+  ctx.fillStyle = mood.accent;
+  ctx.fill();
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Label the AGI point
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 14px Helvetica';
+  ctx.textAlign = 'center';
+  ctx.fillText(`AGI: ${curveYear}`, agiX, agiY - 20);
+
+  // "Now" marker
+  const nowX = padding.left;
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.font = '12px Helvetica';
+  ctx.fillText('📍 Now', nowX + 20, padding.top + chartH - 20);
+}
+
+function update() {
+  // Update display values
+  Object.keys(sliders).forEach(key => {
+    displays[key].textContent = sliders[key].value + '%';
+  });
+
+  const year = calculateTimeline();
+  const mood = getMood(year);
+
+  yearEl.textContent = year;
+  moodEl.textContent = mood.emoji;
+  messageEl.textContent = mood.message;
+
+  // Update colors
+  document.body.style.background = mood.bg;
+  document.body.style.color = 'white';
+  document.querySelector('.controls').style.background = mood.controlsBg;
+  document.querySelector('.result').style.background = mood.controlsBg;
+
+  // Update slider colors
+  document.querySelectorAll('input[type="range"]').forEach(slider => {
+    slider.style.background = `linear-gradient(to right, ${mood.accent}, ${mood.accent}55)`;
+  });
+
+  drawChart(year);
+}
+
+// Event listeners
+Object.values(sliders).forEach(slider => {
+  slider.addEventListener('input', update);
+});
+
+window.addEventListener('resize', update);
+
+// Initial render
+update();
+  </script>
+</body>
+</html>

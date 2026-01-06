@@ -11,3 +11,11 @@ Set up tools repo inspired by Simon Willison's approach:
 - Created GitHub repo and enabled Pages
 
 Live at: https://odcoda.github.io/ksink/
+
+## 2026-01-05 ai timeline estimator
+
+Added `tools/html/ai-timeline.html`:
+- Sliders for compute, algorithms, investment, regulation, coordination
+- Real-time hockey-stick curve visualization
+- Color scheme shifts ominous (red) to chill (blue) based on timeline
+- Emojis reflect the mood from 😱 to 🌴
