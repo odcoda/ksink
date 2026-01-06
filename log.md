@@ -19,3 +19,12 @@ Added `tools/html/ai-timeline.html`:
 - Real-time hockey-stick curve visualization
 - Color scheme shifts ominous (red) to chill (blue) based on timeline
 - Emojis reflect the mood from 😱 to 🌴
+
+## 2026-01-06 wikiquote reels
+
+Built a short-form literature feed:
+- TikTok-style shell with quote cards instead of video
+- Infinite scroll with auto-advance and progress bars
+- Curated classic literature quotes linked to Wikiquote
+Up next:
+- Add a simple search/filter for authors

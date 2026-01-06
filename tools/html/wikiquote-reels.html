@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wikiquote Reels</title>
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --ink: #0d0f14;
+  --paper: #f6efe2;
+  --glow: rgba(247, 206, 127, 0.35);
+  --edge: rgba(255, 255, 255, 0.12);
+  --shadow: rgba(5, 6, 8, 0.65);
+  --accent: #f1b964;
+  --accent-soft: rgba(241, 185, 100, 0.3);
+}
+
+body {
+  margin: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: radial-gradient(circle at 20% 20%, #1a1c26 0%, #0b0d12 45%, #06070a 100%);
+  color: #f3ede3;
+  height: 100vh;
+}
+
+.app {
+  position: relative;
+  height: 100vh;
+  max-width: 540px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.feed {
+  height: 100vh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+.feed::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.reel {
+  position: relative;
+  height: 100vh;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 20px 130px;
+  color: #f8f3ea;
+  background: #0b0d12;
+}
+
+.reel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--backdrop, radial-gradient(circle at 10% 20%, #1c2430 0%, #0c0f14 50%, #06080c 100%));
+  opacity: 0.95;
+}
+
+.reel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(6, 7, 10, 0.2) 0%, rgba(6, 7, 10, 0.5) 70%, rgba(6, 7, 10, 0.8) 100%);
+}
+
+.reel .grain {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0px, rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 2px);
+  opacity: 0.25;
+  mix-blend-mode: overlay;
+}
+
+.quote-stage {
+  position: relative;
+  z-index: 2;
+  width: min(720px, 86vw);
+}
+
+.quote-card {
+  position: relative;
+  background: var(--paper);
+  color: #1c1b1f;
+  padding: 38px 36px 30px;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 28px 60px var(--shadow), 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.quote-card::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+.quote-mark {
+  font-size: 64px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+blockquote {
+  margin: 12px 0 0;
+  font-size: clamp(1.5rem, 2.3vw + 1.2rem, 2.7rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.quote-meta {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3f3a33;
+}
+
+.quote-meta .work {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.9rem;
+  color: #5a5146;
+}
+
+.quote-meta a {
+  text-decoration: none;
+  color: #a45a14;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.quote-meta a:hover {
+  color: #7c3d0a;
+}
+
+.reel-actions {
+  position: absolute;
+  right: 18px;
+  bottom: 120px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.action-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(10, 12, 16, 0.65);
+  border: 1px solid var(--edge);
+  color: #f8f3ea;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.action-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.action-btn .count {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.reel-info {
+  position: absolute;
+  left: 18px;
+  bottom: 96px;
+  z-index: 3;
+  max-width: 70%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.reel-info .handle {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.reel-info .caption {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.82rem;
+}
+
+.progress {
+  position: absolute;
+  top: 56px;
+  left: 16px;
+  right: 16px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  z-index: 3;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0;
+  display: block;
+  background: linear-gradient(90deg, var(--accent) 0%, #f7ddb4 100%);
+}
+
+.reel.active .progress-bar {
+  animation: progress var(--progress-duration, 8500ms) linear forwards;
+}
+
+@keyframes progress {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 540px;
+  height: 56px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.top-tabs {
+  display: flex;
+  gap: 16px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: rgba(10, 12, 16, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+}
+
+.tab {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tab.active {
+  color: #f7f2e8;
+  font-weight: 600;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 540px;
+  height: 72px;
+  z-index: 5;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(6, 7, 10, 0) 0%, rgba(6, 7, 10, 0.9) 70%);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.nav-item.active {
+  color: #f4e7d1;
+}
+
+.nav-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  display: grid;
+  place-items: center;
+  color: inherit;
+}
+
+.nav-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+}
+
+.nav-item.active .nav-icon {
+  background: #f4e7d1;
+  color: #151515;
+  border-color: #f4e7d1;
+}
+
+.sentinel {
+  height: 1px;
+}
+
+@media (max-width: 640px) {
+  .app {
+    max-width: 100%;
+  }
+
+  .quote-card {
+    padding: 32px 28px 26px;
+  }
+
+  .quote-mark {
+    font-size: 52px;
+  }
+
+  .reel-actions {
+    right: 12px;
+  }
+
+  .reel-info {
+    left: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed {
+    scroll-behavior: auto;
+  }
+
+  .reel.active .progress-bar {
+    animation: none;
+    width: 100%;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top-bar">
+      <div class="top-tabs">
+        <span class="tab">Following</span>
+        <span class="tab active">For You</span>
+      </div>
+    </header>
+
+    <main class="feed" id="feed" aria-live="polite"></main>
+
+    <nav class="bottom-nav">
+      <div class="nav-item active">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"></path>
+          </svg>
+        </div>
+        Home
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="6"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </div>
+        Search
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+          </svg>
+        </div>
+        Create
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 6h16v10H7l-3 3z"></path>
+          </svg>
+        </div>
+        Inbox
+      </div>
+      <div class="nav-item">
+        <div class="nav-icon">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"></circle>
+            <path d="M4 20c2-4 6-6 8-6s6 2 8 6"></path>
+          </svg>
+        </div>
+        Profile
+      </div>
+    </nav>
+  </div>
+
+  <script type="module">
+const feed = document.getElementById('feed');
+
+const quotes = [
+  {
+    text: 'It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness.',
+    author: 'Charles Dickens',
+    work: 'A Tale of Two Cities',
+    sourceUrl: 'https://en.wikiquote.org/wiki/A_Tale_of_Two_Cities'
+  },
+  {
+    text: 'Call me Ishmael.',
+    author: 'Herman Melville',
+    work: 'Moby-Dick',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Moby-Dick'
+  },
+  {
+    text: 'All happy families are alike; each unhappy family is unhappy in its own way.',
+    author: 'Leo Tolstoy',
+    work: 'Anna Karenina',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Anna_Karenina'
+  },
+  {
+    text: 'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.',
+    author: 'Jane Austen',
+    work: 'Pride and Prejudice',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Pride_and_Prejudice'
+  },
+  {
+    text: 'I am no bird; and no net ensnares me: I am a free human being with an independent will.',
+    author: 'Charlotte Bronte',
+    work: 'Jane Eyre',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Jane_Eyre'
+  },
+  {
+    text: 'Whatever our souls are made of, his and mine are the same.',
+    author: 'Emily Bronte',
+    work: 'Wuthering Heights',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Wuthering_Heights'
+  },
+  {
+    text: 'Beware; for I am fearless, and therefore powerful.',
+    author: 'Mary Shelley',
+    work: 'Frankenstein',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Frankenstein'
+  },
+  {
+    text: 'The only way to get rid of a temptation is to yield to it.',
+    author: 'Oscar Wilde',
+    work: 'The Picture of Dorian Gray',
+    sourceUrl: 'https://en.wikiquote.org/wiki/The_Picture_of_Dorian_Gray'
+  },
+  {
+    text: 'To be, or not to be, that is the question.',
+    author: 'William Shakespeare',
+    work: 'Hamlet',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Hamlet'
+  },
+  {
+    text: 'All the world\'s a stage, and all the men and women merely players.',
+    author: 'William Shakespeare',
+    work: 'As You Like It',
+    sourceUrl: 'https://en.wikiquote.org/wiki/As_You_Like_It'
+  },
+  {
+    text: 'All animals are equal, but some animals are more equal than others.',
+    author: 'George Orwell',
+    work: 'Animal Farm',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Animal_Farm'
+  },
+  {
+    text: 'Big Brother is watching you.',
+    author: 'George Orwell',
+    work: 'Nineteen Eighty-Four',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Nineteen_Eighty-Four'
+  },
+  {
+    text: 'So we beat on, boats against the current, borne back ceaselessly into the past.',
+    author: 'F. Scott Fitzgerald',
+    work: 'The Great Gatsby',
+    sourceUrl: 'https://en.wikiquote.org/wiki/The_Great_Gatsby'
+  },
+  {
+    text: 'It was a pleasure to burn.',
+    author: 'Ray Bradbury',
+    work: 'Fahrenheit 451',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Fahrenheit_451'
+  },
+  {
+    text: 'All right, then, I\'ll go to hell.',
+    author: 'Mark Twain',
+    work: 'Adventures of Huckleberry Finn',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Adventures_of_Huckleberry_Finn'
+  },
+  {
+    text: 'There is no charm equal to tenderness of heart.',
+    author: 'Jane Austen',
+    work: 'Emma',
+    sourceUrl: 'https://en.wikiquote.org/wiki/Emma'
+  }
+];
+
+const themes = [
+  {
+    accent: '#f1b964',
+    accentSoft: 'rgba(241, 185, 100, 0.3)',
+    paper: 'rgba(247, 241, 231, 0.95)',
+    backdrop: 'radial-gradient(circle at 15% 20%, #263041 0%, #131722 55%, #0a0c12 100%)'
+  },
+  {
+    accent: '#d08a5b',
+    accentSoft: 'rgba(208, 138, 91, 0.3)',
+    paper: 'rgba(247, 238, 226, 0.96)',
+    backdrop: 'radial-gradient(circle at 70% 20%, #2e2a24 0%, #151310 55%, #090807 100%)'
+  },
+  {
+    accent: '#8fbad6',
+    accentSoft: 'rgba(143, 186, 214, 0.3)',
+    paper: 'rgba(240, 244, 246, 0.94)',
+    backdrop: 'radial-gradient(circle at 20% 70%, #1b2a35 0%, #0e141b 55%, #07090c 100%)'
+  },
+  {
+    accent: '#c7a073',
+    accentSoft: 'rgba(199, 160, 115, 0.35)',
+    paper: 'rgba(249, 242, 231, 0.95)',
+    backdrop: 'radial-gradient(circle at 80% 30%, #2a2b2e 0%, #151619 55%, #0b0c0f 100%)'
+  }
+];
+
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let autoAdvanceTimer = null;
+let quotePool = [];
+
+function shuffle(list) {
+  const array = [...list];
+  for (let i = array.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+function nextQuote() {
+  if (quotePool.length === 0) {
+    quotePool = shuffle(quotes);
+  }
+  return quotePool.pop();
+}
+
+function formatCount() {
+  const value = Math.floor(Math.random() * 9500) + 120;
+  if (value >= 1000) {
+    const rounded = Math.round(value / 100) / 10;
+    return `${rounded}k`;
+  }
+  return String(value);
+}
+
+function getDuration() {
+  return 7200 + Math.floor(Math.random() * 2500);
+}
+
+function createActionButton(label, count, icon) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'action-btn';
+  button.setAttribute('aria-label', label);
+  button.innerHTML = `${icon}<span class="count">${count}</span>`;
+  return button;
+}
+
+function createReel() {
+  const quote = nextQuote();
+  const theme = themes[Math.floor(Math.random() * themes.length)];
+  const reel = document.createElement('article');
+  reel.className = 'reel';
+  reel.dataset.duration = String(getDuration());
+  reel.style.setProperty('--accent', theme.accent);
+  reel.style.setProperty('--accent-soft', theme.accentSoft);
+  reel.style.setProperty('--paper', theme.paper);
+  reel.style.setProperty('--backdrop', theme.backdrop);
+
+  reel.innerHTML = `
+    <div class="grain"></div>
+    <div class="quote-stage">
+      <div class="quote-card">
+        <div class="quote-mark">"</div>
+        <blockquote></blockquote>
+        <div class="quote-meta">
+          <span class="author"></span>
+          <span class="work"></span>
+          <a class="source-link" href="" target="_blank" rel="noopener">Wikiquote</a>
+        </div>
+      </div>
+    </div>
+    <div class="reel-info">
+      <div class="handle">@shelftok</div>
+      <div class="caption"></div>
+      <div class="caption">#classiclit #wikiquote</div>
+    </div>
+    <div class="reel-actions"></div>
+    <div class="progress"><span class="progress-bar"></span></div>
+  `;
+
+  reel.querySelector('blockquote').textContent = quote.text;
+  reel.querySelector('.author').textContent = quote.author;
+  reel.querySelector('.work').textContent = quote.work;
+  reel.querySelector('.source-link').href = quote.sourceUrl;
+  reel.querySelector('.caption').textContent = `${quote.work} - ${quote.author}`;
+
+  const actions = reel.querySelector('.reel-actions');
+  actions.append(
+    createActionButton('Like', formatCount(), `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 20s-7-4.5-7-10a4.5 4.5 0 0 1 8-2.5A4.5 4.5 0 0 1 19 10c0 5.5-7 10-7 10z"></path>
+      </svg>
+    `),
+    createActionButton('Comment', formatCount(), `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 5h16v10H7l-3 3z"></path>
+      </svg>
+    `),
+    createActionButton('Share', formatCount(), `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16 5l4 4-4 4"></path>
+        <path d="M20 9H9"></path>
+        <path d="M9 5l-5 4 5 4"></path>
+      </svg>
+    `),
+    createActionButton('Save', formatCount(), `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 4h12v16l-6-4-6 4z"></path>
+      </svg>
+    `)
+  );
+
+  return reel;
+}
+
+function addReels(count) {
+  for (let i = 0; i < count; i += 1) {
+    const reel = createReel();
+    feed.insertBefore(reel, sentinel);
+    reelObserver.observe(reel);
+  }
+}
+
+function getNextReel(current) {
+  let next = current.nextElementSibling;
+  while (next && !next.classList.contains('reel')) {
+    next = next.nextElementSibling;
+  }
+  return next;
+}
+
+function setActive(reel) {
+  if (!reel || reel.classList.contains('active')) {
+    return;
+  }
+
+  const previous = feed.querySelector('.reel.active');
+  if (previous) {
+    previous.classList.remove('active');
+  }
+
+  reel.classList.add('active');
+
+  if (autoAdvanceTimer) {
+    window.clearTimeout(autoAdvanceTimer);
+  }
+
+  const duration = Number(reel.dataset.duration || 8500);
+  reel.style.setProperty('--progress-duration', `${duration}ms`);
+
+  if (!prefersReducedMotion) {
+    autoAdvanceTimer = window.setTimeout(() => {
+      const next = getNextReel(reel);
+      if (next) {
+        next.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, duration);
+  }
+}
+
+const reelObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+      setActive(entry.target);
+    }
+  });
+}, { root: feed, threshold: [0.6, 0.9] });
+
+const sentinel = document.createElement('div');
+const sentinelObserver = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      addReels(4);
+    }
+  });
+}, { root: feed, rootMargin: '500px' });
+
+sentinel.className = 'sentinel';
+feed.appendChild(sentinel);
+addReels(6);
+setActive(feed.querySelector('.reel'));
+sentinelObserver.observe(sentinel);
+
+feed.addEventListener('scroll', () => {
+  if (autoAdvanceTimer) {
+    window.clearTimeout(autoAdvanceTimer);
+  }
+});
+  </script>
+</body>
+</html>
