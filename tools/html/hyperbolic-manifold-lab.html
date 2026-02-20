@@ -157,6 +157,50 @@ button:active {
   color: #d8fff4;
 }
 
+.minimap {
+  left: 14px;
+  bottom: 58px;
+  width: min(360px, calc(100vw - 28px));
+  padding: 10px 11px 12px;
+}
+
+.minimap h2 {
+  margin: 0;
+  font-size: 14px;
+  color: #f2f8fc;
+}
+
+.minimap-sub {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.minimap-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.mini-cell canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 7px;
+  border: 1px solid rgba(164, 191, 212, 0.28);
+  background: rgba(7, 14, 24, 0.9);
+}
+
+.mini-label {
+  margin-top: 3px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+
 .center-note {
   position: fixed;
   left: 50%;
@@ -215,6 +259,17 @@ button:active {
     max-height: 52vh;
     overflow: auto;
   }
+
+  .minimap {
+    left: auto;
+    right: 14px;
+    bottom: 14px;
+    width: min(360px, calc(100vw - 28px));
+  }
+
+  .center-note {
+    display: none;
+  }
 }
   </style>
 </head>
@@ -249,6 +304,25 @@ button:active {
     <ul class="object-list" id="objectList"></ul>
   </div>
 
+  <div class="panel minimap">
+    <h2>Minimap Projections</h2>
+    <div class="minimap-sub" id="minimapModeNote"></div>
+    <div class="minimap-grid">
+      <div class="mini-cell">
+        <canvas id="mapXY"></canvas>
+        <div class="mini-label">x-y</div>
+      </div>
+      <div class="mini-cell">
+        <canvas id="mapXT"></canvas>
+        <div class="mini-label">x-log2(z)</div>
+      </div>
+      <div class="mini-cell">
+        <canvas id="mapYT"></canvas>
+        <div class="mini-label">y-log2(z)</div>
+      </div>
+    </div>
+  </div>
+
   <div class="crosshair" aria-hidden="true"></div>
   <div class="center-note">Finite-volume mode uses a cusp fundamental domain with deck images.</div>
 
@@ -261,6 +335,7 @@ const modeText = document.getElementById('modeText');
 const cameraText = document.getElementById('cameraText');
 const selectedText = document.getElementById('selectedText');
 const objectList = document.getElementById('objectList');
+const minimapModeNote = document.getElementById('minimapModeNote');
 
 const addFrontBtn = document.getElementById('addFront');
 const removeSelBtn = document.getElementById('removeSel');
@@ -270,6 +345,12 @@ const addCoordsBtn = document.getElementById('addCoords');
 const xInput = document.getElementById('xInput');
 const yInput = document.getElementById('yInput');
 const zInput = document.getElementById('zInput');
+const mapXY = document.getElementById('mapXY');
+const mapXT = document.getElementById('mapXT');
+const mapYT = document.getElementById('mapYT');
+const mapXYCtx = mapXY.getContext('2d');
+const mapXTCtx = mapXT.getContext('2d');
+const mapYTCtx = mapYT.getContext('2d');
 
 const EPS = 1e-9;
 const MAX_DT = 0.05;
@@ -277,6 +358,11 @@ const MOVE_SPEED = 1.4;
 const LOOK_SPEED = 0.0018;
 const DRAW_DISTANCE = 7.0;
 const OBJECT_RADIUS = 0.17;
+const GRID_HYPER_STEP = 0.62;
+const GRID_LEVEL_STEP = 0.52;
+const GRID_EXTENT = 2.9;
+const MINI_H3_RANGE = 2.5;
+const MINI_H3_TRANGE = 1.35;
 
 let width = 0;
 let height = 0;
@@ -448,18 +534,40 @@ function fmt(n) {
   return Number(n).toFixed(3);
 }
 
+function wrap01(value) {
+  return ((value % 1) + 1) % 1;
+}
+
+function wrapHalf(value) {
+  let v = value;
+  while (v >= 0.5) {
+    v -= 1;
+  }
+  while (v < -0.5) {
+    v += 1;
+  }
+  return v;
+}
+
 function resize() {
   width = canvas.width = window.innerWidth;
   height = canvas.height = window.innerHeight;
   focal = (width * 0.5) / Math.tan(fov * 0.5);
+  resizeMiniCanvas(mapXY);
+  resizeMiniCanvas(mapXT);
+  resizeMiniCanvas(mapYT);
 }
 
-function worldRayFromLocal(localX, localY, localZ) {
-  let dir = [0, 0, 0, 0];
-  dir = add4(dir, scale4(camera.right, localX));
-  dir = add4(dir, scale4(camera.up, localY));
-  dir = add4(dir, scale4(camera.forward, localZ));
-  return normalizeSpacelike(dir);
+function resizeMiniCanvas(el) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = Math.max(10, Math.round(el.clientWidth));
+  const cssHeight = Math.max(10, Math.round(el.clientHeight));
+  const pxWidth = Math.round(cssWidth * dpr);
+  const pxHeight = Math.round(cssHeight * dpr);
+  if (el.width !== pxWidth || el.height !== pxHeight) {
+    el.width = pxWidth;
+    el.height = pxHeight;
+  }
 }
 
 function spawnInFront() {
@@ -561,6 +669,360 @@ function buildRenderImages(obj, camUpper) {
   return out;
 }
 
+function projectUpperToScreen(u, coshMax) {
+  const h = upperToHyper(u);
+  const depthCosh = -dotM(h, camera.p);
+  if (depthCosh <= 1.00001 || depthCosh > coshMax) {
+    return null;
+  }
+
+  const sx = dotM(h, camera.right);
+  const sy = dotM(h, camera.up);
+  const sz = dotM(h, camera.forward);
+  if (sz <= 0.001) {
+    return null;
+  }
+
+  const x = width * 0.5 + focal * (sx / sz);
+  const y = height * 0.5 - focal * (sy / sz);
+  if (x < -200 || y < -200 || x > width + 200 || y > height + 200) {
+    return null;
+  }
+
+  return { x, y, depth: Math.acosh(depthCosh), sz };
+}
+
+function drawUpperPolyline(points, coshMax) {
+  let hasSegment = false;
+  let penDown = false;
+  ctx.beginPath();
+
+  for (const point of points) {
+    const p = projectUpperToScreen(point, coshMax);
+    if (!p) {
+      penDown = false;
+      continue;
+    }
+    if (!penDown) {
+      ctx.moveTo(p.x, p.y);
+      penDown = true;
+    } else {
+      ctx.lineTo(p.x, p.y);
+      hasSegment = true;
+    }
+  }
+
+  if (hasSegment) {
+    ctx.stroke();
+  }
+}
+
+function drawCoordinateGrid(camUpper, coshMax) {
+  const xCam = camUpper[0];
+  const yCam = camUpper[1];
+  const zCam = Math.max(EPS, camUpper[2]);
+
+  for (let level = -2; level <= 2; level += 1) {
+    const zLevel = zCam * Math.exp(level * GRID_LEVEL_STEP);
+    const spacing = GRID_HYPER_STEP * zLevel;
+    const extent = GRID_EXTENT * zLevel;
+    const yMin = yCam - extent;
+    const yMax = yCam + extent;
+    const xMin = xCam - extent;
+    const xMax = xCam + extent;
+    const alpha = 0.11 * Math.exp(-Math.abs(level) * 0.55);
+
+    ctx.strokeStyle = `rgba(176, 207, 230, ${alpha})`;
+    ctx.lineWidth = level === 0 ? 1.2 : 0.8;
+
+    const startX = Math.floor(xMin / spacing) * spacing;
+    const startY = Math.floor(yMin / spacing) * spacing;
+    const yStep = spacing / 4;
+
+    for (let x = startX; x <= xMax + EPS; x += spacing) {
+      const points = [];
+      for (let y = yMin; y <= yMax + EPS; y += yStep) {
+        points.push([x, y, zLevel]);
+      }
+      drawUpperPolyline(points, coshMax);
+    }
+
+    for (let y = startY; y <= yMax + EPS; y += spacing) {
+      const points = [];
+      for (let x = xMin; x <= xMax + EPS; x += yStep) {
+        points.push([x, y, zLevel]);
+      }
+      drawUpperPolyline(points, coshMax);
+    }
+  }
+
+  drawGridLabels(camUpper, coshMax);
+}
+
+function drawGridLabels(camUpper, coshMax) {
+  const xCam = camUpper[0];
+  const yCam = camUpper[1];
+  const zCam = Math.max(EPS, camUpper[2]);
+  const spacing = GRID_HYPER_STEP * zCam;
+  const xBase = Math.round(xCam / spacing);
+  const yBase = Math.round(yCam / spacing);
+
+  ctx.font = '11px Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(205, 231, 248, 0.62)';
+
+  for (let i = -2; i <= 2; i += 1) {
+    const xVal = (xBase + i) * spacing;
+    const p = projectUpperToScreen([xVal, yCam + 0.16 * spacing, zCam], coshMax);
+    if (p) {
+      const label = mode === 'cusp'
+        ? `x~${fmt(reduceCusp([xVal, yCam, zCam])[0])}`
+        : `x=${fmt(xVal)}`;
+      ctx.fillText(label, p.x + 4, p.y + 4);
+    }
+  }
+
+  for (let i = -2; i <= 2; i += 1) {
+    const yVal = (yBase + i) * spacing;
+    const p = projectUpperToScreen([xCam + 0.16 * spacing, yVal, zCam], coshMax);
+    if (p) {
+      const label = mode === 'cusp'
+        ? `y~${fmt(reduceCusp([xCam, yVal, zCam])[1])}`
+        : `y=${fmt(yVal)}`;
+      ctx.fillText(label, p.x + 4, p.y + 4);
+    }
+  }
+
+  for (let i = -1; i <= 1; i += 1) {
+    const zVal = zCam * Math.exp(i * GRID_LEVEL_STEP);
+    const p = projectUpperToScreen([xCam + 0.2 * spacing, yCam + 0.2 * spacing, zVal], coshMax);
+    if (p) {
+      const label = mode === 'cusp'
+        ? `z~${fmt(reduceCusp([xCam, yCam, zVal])[2])}`
+        : `z=${fmt(zVal)}`;
+      ctx.fillText(label, p.x + 4, p.y + 4);
+    }
+  }
+}
+
+function getCameraForwardProbe() {
+  const d = 0.08;
+  const ahead = add4(scale4(camera.p, Math.cosh(d)), scale4(camera.forward, Math.sinh(d)));
+  return hyperToUpper(ahead);
+}
+
+function drawMiniBackdrop(mapCtx, canvasEl) {
+  const w = canvasEl.width;
+  const h = canvasEl.height;
+  mapCtx.clearRect(0, 0, w, h);
+  mapCtx.fillStyle = '#091524';
+  mapCtx.fillRect(0, 0, w, h);
+  mapCtx.strokeStyle = 'rgba(169, 201, 224, 0.14)';
+  mapCtx.lineWidth = 1;
+  mapCtx.strokeRect(0.5, 0.5, w - 1, h - 1);
+}
+
+function toMiniX(value, minVal, maxVal, widthPx) {
+  const t = (value - minVal) / Math.max(EPS, maxVal - minVal);
+  return t * widthPx;
+}
+
+function toMiniY(value, minVal, maxVal, heightPx) {
+  const t = (value - minVal) / Math.max(EPS, maxVal - minVal);
+  return (1 - t) * heightPx;
+}
+
+function drawMiniAxisAndTicks(mapCtx, canvasEl, xMin, xMax, yMin, yMax, xTicks, yTicks) {
+  const w = canvasEl.width;
+  const h = canvasEl.height;
+
+  mapCtx.strokeStyle = 'rgba(182, 213, 234, 0.16)';
+  mapCtx.lineWidth = 1;
+  mapCtx.font = `${Math.max(9, Math.round(9 * (window.devicePixelRatio || 1)))}px Helvetica, Arial, sans-serif`;
+  mapCtx.fillStyle = 'rgba(201, 225, 241, 0.58)';
+  mapCtx.textBaseline = 'top';
+
+  for (const tick of xTicks) {
+    if (tick < xMin - EPS || tick > xMax + EPS) {
+      continue;
+    }
+    const x = toMiniX(tick, xMin, xMax, w);
+    mapCtx.beginPath();
+    mapCtx.moveTo(x, 0);
+    mapCtx.lineTo(x, h);
+    mapCtx.stroke();
+    mapCtx.fillText(fmt(tick), x + 2, h - 14);
+  }
+
+  for (const tick of yTicks) {
+    if (tick < yMin - EPS || tick > yMax + EPS) {
+      continue;
+    }
+    const y = toMiniY(tick, yMin, yMax, h);
+    mapCtx.beginPath();
+    mapCtx.moveTo(0, y);
+    mapCtx.lineTo(w, y);
+    mapCtx.stroke();
+    mapCtx.fillText(fmt(tick), 2, y + 2);
+  }
+}
+
+function drawMiniPoint(mapCtx, canvasEl, x, y, xMin, xMax, yMin, yMax, color, radius) {
+  if (x < xMin || x > xMax || y < yMin || y > yMax) {
+    return;
+  }
+  const sx = toMiniX(x, xMin, xMax, canvasEl.width);
+  const sy = toMiniY(y, yMin, yMax, canvasEl.height);
+  mapCtx.beginPath();
+  mapCtx.arc(sx, sy, radius, 0, Math.PI * 2);
+  mapCtx.fillStyle = color;
+  mapCtx.fill();
+}
+
+function drawMiniArrow(mapCtx, canvasEl, x, y, dx, dy, xMin, xMax, yMin, yMax) {
+  const len = Math.hypot(dx, dy);
+  if (len < EPS) {
+    return;
+  }
+
+  const ux = dx / len;
+  const uy = dy / len;
+  const scale = mode === 'cusp' ? 0.14 : 0.34;
+
+  const x2 = x + ux * scale;
+  const y2 = y + uy * scale;
+  if (x < xMin || x > xMax || y < yMin || y > yMax) {
+    return;
+  }
+
+  const sx1 = toMiniX(x, xMin, xMax, canvasEl.width);
+  const sy1 = toMiniY(y, yMin, yMax, canvasEl.height);
+  const sx2 = toMiniX(x2, xMin, xMax, canvasEl.width);
+  const sy2 = toMiniY(y2, yMin, yMax, canvasEl.height);
+
+  mapCtx.strokeStyle = 'rgba(241, 253, 255, 0.95)';
+  mapCtx.lineWidth = 2;
+  mapCtx.beginPath();
+  mapCtx.moveTo(sx1, sy1);
+  mapCtx.lineTo(sx2, sy2);
+  mapCtx.stroke();
+}
+
+function drawMinimaps(camUpper) {
+  drawMiniBackdrop(mapXYCtx, mapXY);
+  drawMiniBackdrop(mapXTCtx, mapXT);
+  drawMiniBackdrop(mapYTCtx, mapYT);
+
+  const camReduced = reduceCusp(camUpper);
+  const aheadUpper = getCameraForwardProbe();
+  const aheadReduced = reduceCusp(aheadUpper);
+  const camLog = Math.log2(Math.max(EPS, camUpper[2]));
+  const camReducedLog = Math.log2(Math.max(EPS, camReduced[2]));
+
+  let xyXMin;
+  let xyXMax;
+  let xyYMin;
+  let xyYMax;
+  let xtYMin;
+  let xtYMax;
+  let ytYMin;
+  let ytYMax;
+  let camXY;
+  let camXT;
+  let camYT;
+  let headingXY;
+
+  if (mode === 'cusp') {
+    xyXMin = -0.5;
+    xyXMax = 0.5;
+    xyYMin = -0.5;
+    xyYMax = 0.5;
+    xtYMin = 0;
+    xtYMax = 1;
+    ytYMin = 0;
+    ytYMax = 1;
+    camXY = { x: camReduced[0], y: camReduced[1] };
+    camXT = { x: camReduced[0], y: camReducedLog };
+    camYT = { x: camReduced[1], y: camReducedLog };
+    headingXY = {
+      x: wrapHalf(aheadReduced[0] - camReduced[0]),
+      y: wrapHalf(aheadReduced[1] - camReduced[1])
+    };
+  } else {
+    xyXMin = -MINI_H3_RANGE;
+    xyXMax = MINI_H3_RANGE;
+    xyYMin = -MINI_H3_RANGE;
+    xyYMax = MINI_H3_RANGE;
+    xtYMin = -MINI_H3_TRANGE;
+    xtYMax = MINI_H3_TRANGE;
+    ytYMin = -MINI_H3_TRANGE;
+    ytYMax = MINI_H3_TRANGE;
+    camXY = { x: 0, y: 0 };
+    camXT = { x: 0, y: 0 };
+    camYT = { x: 0, y: 0 };
+    headingXY = {
+      x: (aheadUpper[0] - camUpper[0]) / Math.max(EPS, camUpper[2]),
+      y: (aheadUpper[1] - camUpper[1]) / Math.max(EPS, camUpper[2])
+    };
+  }
+
+  drawMiniAxisAndTicks(
+    mapXYCtx,
+    mapXY,
+    xyXMin,
+    xyXMax,
+    xyYMin,
+    xyYMax,
+    mode === 'cusp' ? [-0.5, 0, 0.5] : [-2, -1, 0, 1, 2],
+    mode === 'cusp' ? [-0.5, 0, 0.5] : [-2, -1, 0, 1, 2]
+  );
+  drawMiniAxisAndTicks(
+    mapXTCtx,
+    mapXT,
+    xyXMin,
+    xyXMax,
+    xtYMin,
+    xtYMax,
+    mode === 'cusp' ? [-0.5, 0, 0.5] : [-2, -1, 0, 1, 2],
+    mode === 'cusp' ? [0, 0.5, 1] : [-1, 0, 1]
+  );
+  drawMiniAxisAndTicks(
+    mapYTCtx,
+    mapYT,
+    xyYMin,
+    xyYMax,
+    ytYMin,
+    ytYMax,
+    mode === 'cusp' ? [-0.5, 0, 0.5] : [-2, -1, 0, 1, 2],
+    mode === 'cusp' ? [0, 0.5, 1] : [-1, 0, 1]
+  );
+
+  for (const obj of objects) {
+    const u = mode === 'cusp' ? reduceCusp(obj.u) : obj.u;
+    const xVal = mode === 'cusp' ? u[0] : (u[0] - camUpper[0]) / Math.max(EPS, camUpper[2]);
+    const yVal = mode === 'cusp' ? u[1] : (u[1] - camUpper[1]) / Math.max(EPS, camUpper[2]);
+    const tVal = mode === 'cusp'
+      ? wrap01(Math.log2(Math.max(EPS, u[2])))
+      : Math.log2(Math.max(EPS, u[2])) - camLog;
+
+    drawMiniPoint(mapXYCtx, mapXY, xVal, yVal, xyXMin, xyXMax, xyYMin, xyYMax, obj.color, obj.id === selectedId ? 5 : 3);
+    drawMiniPoint(mapXTCtx, mapXT, xVal, tVal, xyXMin, xyXMax, xtYMin, xtYMax, obj.color, obj.id === selectedId ? 5 : 3);
+    drawMiniPoint(mapYTCtx, mapYT, yVal, tVal, xyYMin, xyYMax, ytYMin, ytYMax, obj.color, obj.id === selectedId ? 5 : 3);
+  }
+
+  drawMiniPoint(mapXYCtx, mapXY, camXY.x, camXY.y, xyXMin, xyXMax, xyYMin, xyYMax, '#ffffff', 5);
+  drawMiniPoint(mapXTCtx, mapXT, camXT.x, camXT.y, xyXMin, xyXMax, xtYMin, xtYMax, '#ffffff', 5);
+  drawMiniPoint(mapYTCtx, mapYT, camYT.x, camYT.y, xyYMin, xyYMax, ytYMin, ytYMax, '#ffffff', 5);
+  drawMiniArrow(mapXYCtx, mapXY, camXY.x, camXY.y, headingXY.x, headingXY.y, xyXMin, xyXMax, xyYMin, xyYMax);
+
+  if (mode === 'cusp') {
+    minimapModeNote.textContent = 'Quotient chart: x,y are mod 1 and log2(z) is mod 1.';
+  } else {
+    minimapModeNote.textContent = 'Local chart around camera: ((x-cx)/cz, (y-cy)/cz, log2(z/cz)).';
+  }
+}
+
 function render() {
   ctx.clearRect(0, 0, width, height);
 
@@ -572,6 +1034,7 @@ function render() {
 
   const camUpper = hyperToUpper(camera.p);
   const coshMax = Math.cosh(DRAW_DISTANCE);
+  drawCoordinateGrid(camUpper, coshMax);
 
   const drawList = [];
   let bestPick = null;
@@ -825,6 +1288,7 @@ function frame(now) {
   handleKeyboard(dt);
   render();
   updateHud();
+  drawMinimaps(hyperToUpper(camera.p));
 
   requestAnimationFrame(frame);
 }

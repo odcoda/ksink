@@ -1,5 +1,14 @@
 # ksink log
 
+## 2026-02-20 manifold navigation aids
+
+Updated `tools/html/hyperbolic-manifold-lab.html`:
+- Added a 3-view minimap (`x-y`, `x-log2(z)`, `y-log2(z)`) for orientation
+- Added an in-scene horospherical coordinate grid with faint numeric labels
+- Made minimap coordinates adapt between `H^3` local chart and cusp quotient chart
+Up next:
+- Add click-to-select objects from minimap panels
+
 ## 2026-02-20 hyperbolic manifold lab
 
 Built `tools/html/hyperbolic-manifold-lab.html`:
