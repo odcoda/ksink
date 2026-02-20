@@ -1,5 +1,14 @@
 # ksink log
 
+## 2026-02-20 hyperbolic manifold lab
+
+Built `tools/html/hyperbolic-manifold-lab.html`:
+- Added interactive hyperbolic camera navigation in a canvas scene
+- Added object add/remove controls with live coordinate display
+- Added a finite-volume cusp quotient mode via deck-image rendering
+Up next:
+- Add pluggable geometry/manifold definitions for more Thurston geometries
+
 ## 2026-01-05 initial setup
 
 Set up tools repo inspired by Simon Willison's approach:

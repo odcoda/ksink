@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyperbolic Manifold Lab</title>
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-a: #060b12;
+  --bg-b: #0d1b2a;
+  --panel: rgba(8, 17, 27, 0.75);
+  --panel-border: rgba(133, 166, 194, 0.35);
+  --ink: #e2edf6;
+  --muted: #9fb5c7;
+  --accent: #6de2c2;
+  --danger: #ff8d80;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 20% 10%, #193752 0%, var(--bg-b) 35%, var(--bg-a) 90%);
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+.panel {
+  position: fixed;
+  z-index: 10;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+}
+
+.hud {
+  left: 14px;
+  top: 14px;
+  width: min(360px, calc(100vw - 28px));
+  padding: 12px 13px;
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.hud h1,
+.objects h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #f2f8fc;
+}
+
+.hud .line {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.hud .line strong {
+  color: var(--ink);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+button,
+select,
+input {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 16px;
+}
+
+button,
+select {
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: rgba(22, 38, 52, 0.95);
+}
+
+button:hover,
+select:hover {
+  background: rgba(31, 54, 72, 0.95);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+.coords-form {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.coords-form input {
+  width: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--ink);
+  background: rgba(9, 20, 32, 0.95);
+}
+
+.coords-form button {
+  grid-column: 1 / 4;
+}
+
+.objects {
+  right: 14px;
+  top: 14px;
+  width: min(340px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  padding: 12px 13px;
+  overflow: auto;
+  font-size: 13px;
+}
+
+.object-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.object-list li {
+  border-top: 1px solid rgba(158, 184, 204, 0.22);
+  padding: 7px 0;
+  color: var(--muted);
+}
+
+.object-list li strong {
+  color: var(--ink);
+}
+
+.object-list li.selected {
+  color: #d8fff4;
+}
+
+.center-note {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(170, 198, 219, 0.28);
+  background: rgba(8, 19, 32, 0.72);
+  color: #d9ebf7;
+  font-size: 12px;
+}
+
+.crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -9px;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: "";
+  position: absolute;
+  background: rgba(222, 241, 255, 0.86);
+}
+
+.crosshair::before {
+  left: 8px;
+  top: 0;
+  width: 2px;
+  height: 18px;
+}
+
+.crosshair::after {
+  left: 0;
+  top: 8px;
+  width: 18px;
+  height: 2px;
+}
+
+@media (max-width: 860px) {
+  .objects {
+    top: auto;
+    bottom: 14px;
+    max-height: 42vh;
+  }
+
+  .hud {
+    max-height: 52vh;
+    overflow: auto;
+  }
+}
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="panel hud">
+    <h1>Hyperbolic Manifold Lab</h1>
+    <div class="line" id="modeText"></div>
+    <div class="line" id="cameraText"></div>
+    <div class="line" id="selectedText"></div>
+    <div class="line"><strong>Move</strong> WASD + Space/Shift, <strong>look</strong> mouse (click canvas), <strong>add</strong> F, <strong>remove</strong> R</div>
+    <div class="controls">
+      <select id="modeSelect" title="Geometry mode">
+        <option value="h3">H^3 (universal cover)</option>
+        <option value="cusp">Cusped quotient (finite-volume toy)</option>
+      </select>
+      <button id="addFront">Add In Front (F)</button>
+      <button id="removeSel">Remove Selected (R)</button>
+      <button id="clearAll">Clear All</button>
+    </div>
+    <div class="coords-form">
+      <input id="xInput" type="number" step="0.01" value="0" aria-label="x coordinate">
+      <input id="yInput" type="number" step="0.01" value="0" aria-label="y coordinate">
+      <input id="zInput" type="number" step="0.01" value="1.25" aria-label="z coordinate">
+      <button id="addCoords">Add At Coordinates</button>
+    </div>
+  </div>
+
+  <div class="panel objects">
+    <h2>Objects</h2>
+    <ul class="object-list" id="objectList"></ul>
+  </div>
+
+  <div class="crosshair" aria-hidden="true"></div>
+  <div class="center-note">Finite-volume mode uses a cusp fundamental domain with deck images.</div>
+
+  <script type="module">
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+
+const modeSelect = document.getElementById('modeSelect');
+const modeText = document.getElementById('modeText');
+const cameraText = document.getElementById('cameraText');
+const selectedText = document.getElementById('selectedText');
+const objectList = document.getElementById('objectList');
+
+const addFrontBtn = document.getElementById('addFront');
+const removeSelBtn = document.getElementById('removeSel');
+const clearAllBtn = document.getElementById('clearAll');
+const addCoordsBtn = document.getElementById('addCoords');
+
+const xInput = document.getElementById('xInput');
+const yInput = document.getElementById('yInput');
+const zInput = document.getElementById('zInput');
+
+const EPS = 1e-9;
+const MAX_DT = 0.05;
+const MOVE_SPEED = 1.4;
+const LOOK_SPEED = 0.0018;
+const DRAW_DISTANCE = 7.0;
+const OBJECT_RADIUS = 0.17;
+
+let width = 0;
+let height = 0;
+let fov = Math.PI / 2.8;
+let focal = 1;
+
+let mode = 'h3';
+let nextObjectId = 1;
+let selectedId = null;
+
+const keys = new Set();
+const pendingLook = { yaw: 0, pitch: 0 };
+
+const camera = {
+  p: [1, 0, 0, 0],
+  right: [0, 1, 0, 0],
+  up: [0, 0, 1, 0],
+  forward: [0, 0, 0, 1]
+};
+
+const objects = [];
+
+function dotM(a, b) {
+  return -a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+}
+
+function add4(a, b) {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]];
+}
+
+function sub4(a, b) {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]];
+}
+
+function scale4(a, s) {
+  return [a[0] * s, a[1] * s, a[2] * s, a[3] * s];
+}
+
+function normSpacelike(v) {
+  return Math.sqrt(Math.max(EPS, dotM(v, v)));
+}
+
+function normalizeSpacelike(v) {
+  const n = normSpacelike(v);
+  return scale4(v, 1 / n);
+}
+
+function renormalizeCamera() {
+  camera.p = scale4(camera.p, 1 / Math.sqrt(Math.max(EPS, -dotM(camera.p, camera.p))));
+
+  const basis = ['right', 'up', 'forward'];
+  for (let i = 0; i < basis.length; i += 1) {
+    const key = basis[i];
+    let v = camera[key];
+    v = add4(v, scale4(camera.p, dotM(v, camera.p)));
+    for (let j = 0; j < i; j += 1) {
+      const prev = camera[basis[j]];
+      v = sub4(v, scale4(prev, dotM(v, prev)));
+    }
+    camera[key] = normalizeSpacelike(v);
+  }
+}
+
+function moveAlong(direction, dist) {
+  if (dist < EPS) {
+    return;
+  }
+  const v = normalizeSpacelike(direction);
+  const ch = Math.cosh(dist);
+  const sh = Math.sinh(dist);
+  const oldP = camera.p;
+
+  const boostedPV = add4(scale4(oldP, sh), scale4(v, ch));
+  camera.p = add4(scale4(oldP, ch), scale4(v, sh));
+
+  camera.right = boostFrameVector(camera.right, v, oldP, boostedPV, sh, ch);
+  camera.up = boostFrameVector(camera.up, v, oldP, boostedPV, sh, ch);
+  camera.forward = boostFrameVector(camera.forward, v, oldP, boostedPV, sh, ch);
+
+  renormalizeCamera();
+}
+
+function boostFrameVector(e, v, oldP, boostedPV, sh, ch) {
+  const a = dotM(e, v);
+  const ePerp = sub4(e, scale4(v, a));
+  const pPart = add4(scale4(oldP, sh), scale4(v, ch));
+  return add4(ePerp, scale4(pPart, a));
+}
+
+function rotateFrame(yaw, pitch) {
+  if (Math.abs(yaw) > EPS) {
+    const c = Math.cos(yaw);
+    const s = Math.sin(yaw);
+    const f = add4(scale4(camera.forward, c), scale4(camera.right, s));
+    const r = add4(scale4(camera.right, c), scale4(camera.forward, -s));
+    camera.forward = f;
+    camera.right = r;
+  }
+
+  if (Math.abs(pitch) > EPS) {
+    const c = Math.cos(pitch);
+    const s = Math.sin(pitch);
+    const f = add4(scale4(camera.forward, c), scale4(camera.up, s));
+    const u = add4(scale4(camera.up, c), scale4(camera.forward, -s));
+    camera.forward = f;
+    camera.up = u;
+  }
+
+  renormalizeCamera();
+}
+
+function hyperToUpper(h) {
+  const denom = h[0] - h[3];
+  const safe = Math.max(EPS, denom);
+  return [h[1] / safe, h[2] / safe, 1 / safe];
+}
+
+function upperToHyper(u) {
+  const x = u[0];
+  const y = u[1];
+  const z = Math.max(EPS, u[2]);
+  const r2 = x * x + y * y + z * z;
+  return [
+    (r2 + 1) / (2 * z),
+    x / z,
+    y / z,
+    (r2 - 1) / (2 * z)
+  ];
+}
+
+function reduceCusp(u) {
+  let x = u[0];
+  let y = u[1];
+  let z = Math.max(EPS, u[2]);
+
+  const k = Math.floor(Math.log2(z));
+  const scale = Math.pow(2, -k);
+  x *= scale;
+  y *= scale;
+  z *= scale;
+
+  x -= Math.round(x);
+  y -= Math.round(y);
+
+  if (x >= 0.5) {
+    x -= 1;
+  }
+  if (x < -0.5) {
+    x += 1;
+  }
+  if (y >= 0.5) {
+    y -= 1;
+  }
+  if (y < -0.5) {
+    y += 1;
+  }
+
+  if (z < 1) {
+    z *= 2;
+  }
+  if (z >= 2) {
+    z *= 0.5;
+  }
+
+  return [x, y, z];
+}
+
+function fmt(n) {
+  return Number(n).toFixed(3);
+}
+
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+  focal = (width * 0.5) / Math.tan(fov * 0.5);
+}
+
+function worldRayFromLocal(localX, localY, localZ) {
+  let dir = [0, 0, 0, 0];
+  dir = add4(dir, scale4(camera.right, localX));
+  dir = add4(dir, scale4(camera.up, localY));
+  dir = add4(dir, scale4(camera.forward, localZ));
+  return normalizeSpacelike(dir);
+}
+
+function spawnInFront() {
+  const d = 1.4;
+  const p = add4(scale4(camera.p, Math.cosh(d)), scale4(camera.forward, Math.sinh(d)));
+  let u = hyperToUpper(p);
+  if (mode === 'cusp') {
+    u = reduceCusp(u);
+  }
+  addObjectAtUpper(u[0], u[1], u[2]);
+}
+
+function addObjectAtUpper(x, y, z) {
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+    return;
+  }
+
+  let u = [x, y, Math.max(0.05, z)];
+  if (mode === 'cusp') {
+    u = reduceCusp(u);
+  }
+
+  const hue = (objects.length * 47 + 140) % 360;
+  const color = `hsl(${hue}deg 80% 68%)`;
+
+  objects.push({
+    id: nextObjectId,
+    u,
+    radius: OBJECT_RADIUS,
+    color
+  });
+  nextObjectId += 1;
+
+  if (selectedId === null) {
+    selectedId = objects[0].id;
+  }
+  updateObjectList();
+}
+
+function removeSelected() {
+  if (selectedId === null) {
+    return;
+  }
+  const idx = objects.findIndex((obj) => obj.id === selectedId);
+  if (idx >= 0) {
+    objects.splice(idx, 1);
+  }
+  selectedId = objects.length ? objects[0].id : null;
+  updateObjectList();
+}
+
+function clearObjects() {
+  objects.length = 0;
+  selectedId = null;
+  updateObjectList();
+}
+
+function seedScene() {
+  for (let i = 0; i < 8; i += 1) {
+    const angle = (Math.PI * 2 * i) / 8;
+    const d = 1.8 + 0.4 * Math.sin(i * 1.6);
+    const dir = [0, Math.cos(angle), Math.sin(angle), 0.4 + 0.2 * Math.sin(i * 1.2)];
+    const nd = normalizeSpacelike(dir);
+    const p = add4(scale4(camera.p, Math.cosh(d)), scale4(nd, Math.sinh(d)));
+    let u = hyperToUpper(p);
+    if (mode === 'cusp') {
+      u = reduceCusp(u);
+    }
+    addObjectAtUpper(u[0], u[1], u[2]);
+  }
+}
+
+function buildRenderImages(obj, camUpper) {
+  if (mode === 'h3') {
+    return [obj.u];
+  }
+
+  const out = [];
+  const kCenter = Math.round(Math.log2(Math.max(EPS, camUpper[2]) / obj.u[2]));
+  for (let dk = -1; dk <= 1; dk += 1) {
+    const k = kCenter + dk;
+    const scale = Math.pow(2, k);
+    const centerI = Math.round(camUpper[0] / scale - obj.u[0]);
+    const centerJ = Math.round(camUpper[1] / scale - obj.u[1]);
+
+    for (let di = -1; di <= 1; di += 1) {
+      for (let dj = -1; dj <= 1; dj += 1) {
+        const i = centerI + di;
+        const j = centerJ + dj;
+        out.push([
+          scale * (obj.u[0] + i),
+          scale * (obj.u[1] + j),
+          scale * obj.u[2]
+        ]);
+      }
+    }
+  }
+
+  return out;
+}
+
+function render() {
+  ctx.clearRect(0, 0, width, height);
+
+  const bg = ctx.createLinearGradient(0, 0, 0, height);
+  bg.addColorStop(0, '#0f2235');
+  bg.addColorStop(1, '#071019');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  const camUpper = hyperToUpper(camera.p);
+  const coshMax = Math.cosh(DRAW_DISTANCE);
+
+  const drawList = [];
+  let bestPick = null;
+
+  for (const obj of objects) {
+    const images = buildRenderImages(obj, camUpper);
+    for (const u of images) {
+      const h = upperToHyper(u);
+      const depthCosh = -dotM(h, camera.p);
+      if (depthCosh <= 1.00001 || depthCosh > coshMax) {
+        continue;
+      }
+
+      const sx = dotM(h, camera.right);
+      const sy = dotM(h, camera.up);
+      const sz = dotM(h, camera.forward);
+
+      if (sz <= 0.001) {
+        continue;
+      }
+
+      const px = width * 0.5 + focal * (sx / sz);
+      const py = height * 0.5 - focal * (sy / sz);
+      if (px < -120 || py < -120 || px > width + 120 || py > height + 120) {
+        continue;
+      }
+
+      const d = Math.acosh(depthCosh);
+      const sinAlpha = Math.min(0.999, Math.sinh(obj.radius) / Math.max(EPS, Math.sinh(d)));
+      const radiusPx = Math.max(2, focal * Math.tan(Math.asin(sinAlpha)));
+
+      drawList.push({
+        id: obj.id,
+        color: obj.color,
+        x: px,
+        y: py,
+        r: radiusPx,
+        depth: d
+      });
+
+      const crossSq = (px - width * 0.5) * (px - width * 0.5) + (py - height * 0.5) * (py - height * 0.5);
+      if (!bestPick || crossSq < bestPick.crossSq) {
+        bestPick = { id: obj.id, crossSq };
+      }
+    }
+  }
+
+  drawList.sort((a, b) => b.depth - a.depth);
+
+  for (const item of drawList) {
+    ctx.beginPath();
+    ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2);
+    ctx.fillStyle = item.color;
+    ctx.fill();
+
+    const isSelected = item.id === selectedId;
+    ctx.lineWidth = isSelected ? 2.2 : 1.0;
+    ctx.strokeStyle = isSelected ? '#ffffff' : 'rgba(255,255,255,0.3)';
+    ctx.stroke();
+  }
+
+  if (bestPick && bestPick.crossSq < 1800) {
+    selectedId = bestPick.id;
+  }
+
+  drawHorizonGuide();
+}
+
+function drawHorizonGuide() {
+  const steps = 10;
+  ctx.strokeStyle = 'rgba(184, 216, 238, 0.09)';
+  ctx.lineWidth = 1;
+
+  for (let i = 1; i <= steps; i += 1) {
+    const y = (height / (steps + 1)) * i;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+
+  for (let i = 1; i <= steps; i += 1) {
+    const x = (width / (steps + 1)) * i;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
+  }
+}
+
+function updateObjectList() {
+  objectList.innerHTML = '';
+  for (const obj of objects) {
+    const li = document.createElement('li');
+    if (obj.id === selectedId) {
+      li.classList.add('selected');
+    }
+    li.innerHTML = `<strong>#${obj.id}</strong> x=${fmt(obj.u[0])}, y=${fmt(obj.u[1])}, z=${fmt(obj.u[2])}`;
+    objectList.appendChild(li);
+  }
+}
+
+function updateHud() {
+  const camUpperRaw = hyperToUpper(camera.p);
+  const camUpperDisplay = mode === 'cusp' ? reduceCusp(camUpperRaw) : camUpperRaw;
+
+  const modeLabel = mode === 'cusp'
+    ? 'Mode: finite-volume hyperbolic cusp quotient (toy fundamental domain)'
+    : 'Mode: hyperbolic 3-space H^3 (universal cover)';
+
+  modeText.textContent = modeLabel;
+  cameraText.innerHTML = `<strong>Camera</strong> x=${fmt(camUpperDisplay[0])}, y=${fmt(camUpperDisplay[1])}, z=${fmt(camUpperDisplay[2])}`;
+
+  const selected = objects.find((obj) => obj.id === selectedId);
+  if (selected) {
+    selectedText.innerHTML = `<strong>Selected #${selected.id}</strong> x=${fmt(selected.u[0])}, y=${fmt(selected.u[1])}, z=${fmt(selected.u[2])}`;
+  } else {
+    selectedText.innerHTML = '<strong>Selected</strong> none';
+  }
+}
+
+function handleKeyboard(dt) {
+  let x = 0;
+  let y = 0;
+  let z = 0;
+
+  if (keys.has('KeyA')) {
+    x -= 1;
+  }
+  if (keys.has('KeyD')) {
+    x += 1;
+  }
+  if (keys.has('Space')) {
+    y += 1;
+  }
+  if (keys.has('ShiftLeft') || keys.has('ShiftRight')) {
+    y -= 1;
+  }
+  if (keys.has('KeyW')) {
+    z += 1;
+  }
+  if (keys.has('KeyS')) {
+    z -= 1;
+  }
+
+  const len = Math.hypot(x, y, z);
+  if (len > EPS) {
+    let direction = [0, 0, 0, 0];
+    direction = add4(direction, scale4(camera.right, x / len));
+    direction = add4(direction, scale4(camera.up, y / len));
+    direction = add4(direction, scale4(camera.forward, z / len));
+    moveAlong(direction, MOVE_SPEED * dt * len);
+  }
+
+  let yaw = pendingLook.yaw;
+  let pitch = pendingLook.pitch;
+  pendingLook.yaw = 0;
+  pendingLook.pitch = 0;
+
+  if (keys.has('ArrowLeft')) {
+    yaw += 1.8 * dt;
+  }
+  if (keys.has('ArrowRight')) {
+    yaw -= 1.8 * dt;
+  }
+  if (keys.has('ArrowUp')) {
+    pitch += 1.6 * dt;
+  }
+  if (keys.has('ArrowDown')) {
+    pitch -= 1.6 * dt;
+  }
+
+  if (Math.abs(yaw) > EPS || Math.abs(pitch) > EPS) {
+    rotateFrame(yaw, pitch);
+  }
+}
+
+function toggleMode(nextMode) {
+  mode = nextMode;
+  if (mode === 'cusp') {
+    for (const obj of objects) {
+      obj.u = reduceCusp(obj.u);
+    }
+  }
+  updateObjectList();
+}
+
+function setupEvents() {
+  window.addEventListener('resize', resize);
+
+  document.addEventListener('keydown', (event) => {
+    if (!event.repeat) {
+      if (event.code === 'KeyF') {
+        spawnInFront();
+      }
+      if (event.code === 'KeyR') {
+        removeSelected();
+      }
+      if (event.code === 'KeyX') {
+        clearObjects();
+      }
+    }
+    keys.add(event.code);
+  });
+
+  document.addEventListener('keyup', (event) => {
+    keys.delete(event.code);
+  });
+
+  canvas.addEventListener('click', () => {
+    canvas.requestPointerLock();
+  });
+
+  document.addEventListener('mousemove', (event) => {
+    if (document.pointerLockElement !== canvas) {
+      return;
+    }
+    pendingLook.yaw -= event.movementX * LOOK_SPEED;
+    pendingLook.pitch -= event.movementY * LOOK_SPEED;
+  });
+
+  modeSelect.addEventListener('change', () => {
+    toggleMode(modeSelect.value);
+  });
+
+  addFrontBtn.addEventListener('click', () => {
+    spawnInFront();
+  });
+
+  removeSelBtn.addEventListener('click', () => {
+    removeSelected();
+  });
+
+  clearAllBtn.addEventListener('click', () => {
+    clearObjects();
+  });
+
+  addCoordsBtn.addEventListener('click', () => {
+    const x = Number(xInput.value);
+    const y = Number(yInput.value);
+    const z = Number(zInput.value);
+    addObjectAtUpper(x, y, z);
+  });
+}
+
+let lastTime = performance.now();
+function frame(now) {
+  const dt = Math.min(MAX_DT, (now - lastTime) / 1000);
+  lastTime = now;
+
+  handleKeyboard(dt);
+  render();
+  updateHud();
+
+  requestAnimationFrame(frame);
+}
+
+resize();
+setupEvents();
+seedScene();
+requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
