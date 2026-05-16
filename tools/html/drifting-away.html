@@ -5,158 +5,170 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Drifting Away</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+* {
+  box-sizing: border-box;
+}
 
-    body {
-      margin: 0;
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      color: #0a1b2a;
-      background: radial-gradient(circle at top, #f7fbff 0%, #dbe9f6 45%, #c0d8f0 100%);
-      min-height: 100vh;
-      overflow: hidden;
-    }
+body {
+  margin: 0;
+  font-family: Helvetica, Arial, sans-serif;
+  color: #0a1b2a;
+  background: radial-gradient(circle at top, #f7fbff 0%, #dbe9f6 45%, #c0d8f0 100%);
+  min-height: 100vh;
+  overflow: hidden;
+}
 
-    .scene {
-      position: relative;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
-    }
+.scene {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
 
-    .scene::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.7), transparent 50%),
-        radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.5), transparent 45%),
-        radial-gradient(circle at 60% 80%, rgba(255, 255, 255, 0.4), transparent 50%);
-      pointer-events: none;
-      mix-blend-mode: screen;
-    }
+.scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.7), transparent 50%),
+    radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.5), transparent 45%),
+    radial-gradient(circle at 60% 80%, rgba(255, 255, 255, 0.4), transparent 50%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
 
-    header {
-      position: absolute;
-      top: 24px;
-      left: 24px;
-      z-index: 10;
-      background: rgba(255, 255, 255, 0.7);
-      padding: 12px 18px;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(16, 60, 100, 0.15);
-      backdrop-filter: blur(8px);
-    }
+header {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 12px 18px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(16, 60, 100, 0.15);
+  backdrop-filter: blur(8px);
+}
 
-    header h1 {
-      margin: 0;
-      font-size: 20px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: #2b4c6f;
-    }
+header h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #2b4c6f;
+}
 
-    header p {
-      margin: 4px 0 0;
-      font-size: 13px;
-      color: #3e6083;
-    }
+header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #3e6083;
+}
 
-    .composer {
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(560px, 90vw);
-      display: flex;
-      gap: 10px;
-      z-index: 10;
-      background: rgba(255, 255, 255, 0.85);
-      padding: 12px 14px;
-      border-radius: 16px;
-      box-shadow: 0 12px 30px rgba(16, 60, 100, 0.18);
-      backdrop-filter: blur(10px);
-    }
+.composer {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 90vw);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 12px 14px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(16, 60, 100, 0.18);
+  backdrop-filter: blur(10px);
+}
 
-    .composer input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 15px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.8);
-      color: #1a2b3c;
-    }
+.composer input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #1a2b3c;
+}
 
-    .composer button {
-      border: none;
-      background: linear-gradient(135deg, #5ab0ff, #7c5cff);
-      color: white;
-      font-weight: 600;
-      padding: 10px 18px;
-      border-radius: 12px;
-      cursor: pointer;
-      box-shadow: 0 8px 14px rgba(70, 120, 200, 0.3);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
+.composer button {
+  flex: 0 0 auto;
+  border: none;
+  background: linear-gradient(135deg, #5ab0ff, #7c5cff);
+  color: white;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 8px 14px rgba(70, 120, 200, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
 
-    .composer button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 18px rgba(70, 120, 200, 0.35);
-    }
+.composer button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 18px rgba(70, 120, 200, 0.35);
+}
 
-    .composer button:active {
-      transform: translateY(1px);
-    }
+.composer button:active {
+  transform: translateY(1px);
+}
 
-    .bubble {
-      position: absolute;
-      border-radius: 50%;
-      background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.15) 55%, rgba(200, 230, 255, 0.35) 100%);
-      box-shadow: 0 0 18px rgba(160, 210, 255, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px;
-      pointer-events: none;
-    }
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.15) 55%, rgba(200, 230, 255, 0.35) 100%);
+  box-shadow: 0 0 18px rgba(160, 210, 255, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
 
-    .bubble::after {
-      content: "";
-      position: absolute;
-      top: 10%;
-      left: 18%;
-      width: 28%;
-      height: 20%;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.7);
-      filter: blur(1px);
-    }
+.bubble::after {
+  content: "";
+  position: absolute;
+  top: 10%;
+  left: 18%;
+  width: 28%;
+  height: 20%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  filter: blur(1px);
+}
 
-    .bubble-message {
-      font-size: 12px;
-      text-align: center;
-      color: rgba(30, 60, 90, 0.85);
-      text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
-      line-height: 1.2;
-      word-break: break-word;
-    }
+.bubble-message {
+  font-size: 12px;
+  text-align: center;
+  color: rgba(30, 60, 90, 0.85);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+  line-height: 1.2;
+  word-break: break-word;
+}
 
-    .pop {
-      animation: pop 0.4s ease-out forwards;
-    }
+.pop {
+  animation: pop 0.4s ease-out forwards;
+}
 
-    @keyframes pop {
-      0% {
-        transform: scale(1);
-        opacity: 0.7;
-      }
-      100% {
-        transform: scale(1.2);
-        opacity: 0;
-      }
-    }
+@keyframes pop {
+  100% {
+    opacity: 0;
+    filter: blur(5px);
+  }
+}
+
+@media (max-width: 520px) {
+  header {
+    top: 16px;
+    left: 16px;
+    right: 16px;
+  }
+
+  .composer {
+    bottom: 16px;
+    width: calc(100vw - 32px);
+  }
+}
   </style>
 </head>
 <body>
@@ -172,102 +184,116 @@
     </form>
   </div>
 
-  <script>
-    const scene = document.getElementById("scene");
-    const composer = document.getElementById("composer");
-    const messageInput = document.getElementById("messageInput");
-    const bubbles = [];
+  <script type="module">
+const scene = document.getElementById("scene");
+const composer = document.getElementById("composer");
+const messageInput = document.getElementById("messageInput");
+const bubbles = [];
 
-    const randomBetween = (min, max) => Math.random() * (max - min) + min;
+const randomBetween = (min, max) => Math.random() * (max - min) + min;
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-    function createBubble(message) {
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
+function removeBubble(bubble) {
+  bubble.element.remove();
+  const bubbleIndex = bubbles.indexOf(bubble);
 
-      const messageSpan = document.createElement("span");
-      messageSpan.className = "bubble-message";
-      messageSpan.textContent = message;
+  if (bubbleIndex !== -1) {
+    bubbles.splice(bubbleIndex, 1);
+  }
+}
 
-      bubble.appendChild(messageSpan);
-      scene.appendChild(bubble);
+function placeBubble(bubble) {
+  const elapsed = performance.now() - bubble.startTime;
+  const progress = clamp(elapsed / bubble.duration, 0, 1);
+  const wobble = Math.sin(elapsed / 1000 * bubble.wobbleRate);
+  const driftX = bubble.drift * progress + wobble * bubble.wobbleSize;
+  const y = bubble.startY + (bubble.endY - bubble.startY) * progress;
+  const shape = 1 + wobble * 0.04;
 
-      const size = randomBetween(60, 110);
-      const startX = randomBetween(size * 0.6, window.innerWidth - size * 0.6);
-      const startY = window.innerHeight + randomBetween(20, 80);
+  bubble.element.style.opacity = Math.max(0.35, 0.9 - progress * 0.55);
+  bubble.messageSpan.style.opacity = Math.max(0, 1 - progress * 1.1);
+  bubble.element.style.transform = `translate(${bubble.startX + driftX}px, ${y}px) scale(${shape}, ${2 - shape})`;
 
-      bubble.style.width = `${size}px`;
-      bubble.style.height = `${size}px`;
+  return progress;
+}
 
-      const duration = randomBetween(8.5, 12.5) * 1000;
-      const popHeight = randomBetween(0.1, 0.35) * window.innerHeight;
-      const drift = randomBetween(-12, 12);
-      const wobbleRate = randomBetween(0.8, 1.8);
-      const wobbleSize = randomBetween(6, 14);
-      const riseSpeed = randomBetween(18, 32);
-      const startTime = performance.now();
+function createBubble(message) {
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
 
-      bubbles.push({
-        element: bubble,
-        messageSpan,
-        size,
-        startX,
-        startY,
-        y: startY,
-        drift,
-        wobbleRate,
-        wobbleSize,
-        riseSpeed,
-        startTime,
-        duration,
-        popHeight,
-        popped: false
-      });
+  const messageSpan = document.createElement("span");
+  messageSpan.className = "bubble-message";
+  messageSpan.textContent = message;
+
+  bubble.appendChild(messageSpan);
+  scene.appendChild(bubble);
+
+  const size = randomBetween(60, 110);
+  const maxStartX = Math.max(16, window.innerWidth - size - 16);
+  const startX = randomBetween(16, maxStartX);
+  const startY = window.innerHeight + randomBetween(20, 80);
+
+  bubble.style.width = `${size}px`;
+  bubble.style.height = `${size}px`;
+
+  const duration = randomBetween(8.5, 12.5) * 1000;
+  const popHeight = randomBetween(0.1, 0.35) * window.innerHeight;
+  const drift = randomBetween(-12, 12);
+  const wobbleRate = randomBetween(0.8, 1.8);
+  const wobbleSize = randomBetween(6, 14);
+  const startTime = performance.now();
+  const endY = popHeight;
+
+  const bubbleState = {
+    element: bubble,
+    messageSpan,
+    startX,
+    startY,
+    endY,
+    drift,
+    wobbleRate,
+    wobbleSize,
+    startTime,
+    duration,
+    popped: false
+  };
+
+  bubbles.push(bubbleState);
+  placeBubble(bubbleState);
+}
+
+function updateBubbles() {
+  bubbles.forEach((bubble) => {
+    if (bubble.popped) {
+      return;
     }
 
-    function updateBubbles(time) {
-      bubbles.forEach((bubble, index) => {
-        if (bubble.popped) {
-          return;
-        }
+    const progress = placeBubble(bubble);
 
-        const elapsed = time - bubble.startTime;
-        const progress = Math.min(elapsed / bubble.duration, 1);
-        const driftX = bubble.drift * progress + Math.sin(elapsed / 1000 * bubble.wobbleRate) * bubble.wobbleSize;
-        bubble.y -= bubble.riseSpeed * (1 + progress * 1.2);
-
-        const opacity = Math.max(0, 0.9 - progress * 0.9);
-        bubble.element.style.opacity = opacity;
-        bubble.messageSpan.style.opacity = Math.max(0, 1 - progress * 1.1);
-
-        const shape = 1 + Math.sin(elapsed / 1000 * bubble.wobbleRate) * 0.04;
-        bubble.element.style.transform = `translate(${bubble.startX + driftX}px, ${bubble.y}px) scale(${shape}, ${2 - shape})`;
-
-        const shouldPop = bubble.y <= bubble.popHeight || progress >= 1;
-        if (shouldPop) {
-          bubble.popped = true;
-          bubble.element.classList.add("pop");
-          setTimeout(() => {
-            bubble.element.remove();
-            bubbles.splice(index, 1);
-          }, 400);
-        }
-      });
-
-      requestAnimationFrame(updateBubbles);
+    if (progress >= 1) {
+      bubble.popped = true;
+      bubble.element.classList.add("pop");
+      window.setTimeout(() => removeBubble(bubble), 400);
     }
+  });
 
-    composer.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const message = messageInput.value.trim();
-      if (!message) {
-        return;
-      }
-      createBubble(message);
-      messageInput.value = "";
-      messageInput.focus();
-    });
+  requestAnimationFrame(updateBubbles);
+}
 
-    requestAnimationFrame(updateBubbles);
+composer.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const message = messageInput.value.trim();
+
+  if (!message) {
+    return;
+  }
+
+  createBubble(message);
+  messageInput.value = "";
+  messageInput.focus();
+});
+
+requestAnimationFrame(updateBubbles);
   </script>
 </body>
 </html>

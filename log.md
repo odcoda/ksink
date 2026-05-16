@@ -1,5 +1,13 @@
 # ksink log
 
+## 2026-05-16 drifting away bubble fix
+Resolved conflict markers and stabilized bubble timing:
+- uses elapsed duration progress for ascent
+- removes popped bubbles by object reference
+- keeps pop animation from resetting position
+Up next:
+- verify live feel in a browser session when local file access is available
+
 ## 2026-02-20 manifold navigation aids
 
 Updated `tools/html/hyperbolic-manifold-lab.html`:
