@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Octo-Bandit Range</title>
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --ink: #18384d;
+  --muted: #527187;
+  --cream: #fff9e8;
+  --paper: rgba(255, 253, 241, 0.94);
+  --coral: #eb745f;
+  --coral-dark: #bd4c45;
+  --gold: #ffca58;
+  --sea: #4ab8ba;
+  --sea-dark: #167988;
+  --sea-deep: #07586c;
+  --green: #4baf72;
+  --red: #de5c58;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink);
+  background: linear-gradient(#62d2ce 0%, #2c9fa8 58%, #137482 100%);
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+button {
+  font-family: inherit;
+  font-size: 16px;
+}
+
+.page-shell {
+  width: min(1120px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 18px 0 24px;
+}
+
+.topbar,
+.lesson-card,
+.game-board,
+.summary-card {
+  border: 3px solid rgba(7, 88, 108, 0.38);
+  box-shadow: 0 12px 0 rgba(7, 88, 108, 0.15);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: var(--paper);
+}
+
+h1 {
+  margin: 0;
+  color: var(--sea-deep);
+  font-size: clamp(25px, 4vw, 38px);
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.subtitle {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.new-game-button,
+.summary-card button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 17px;
+  color: white;
+  background: var(--coral);
+  box-shadow: 0 4px 0 var(--coral-dark);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.new-game-button:hover,
+.summary-card button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 var(--coral-dark);
+}
+
+.new-game-button:active,
+.summary-card button:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--coral-dark);
+}
+
+.lesson-card {
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border-radius: 17px;
+  background: rgba(255, 249, 232, 0.9);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.lesson-card strong {
+  color: var(--coral-dark);
+}
+
+.score-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.score-box {
+  padding: 10px 12px;
+  border: 2px solid rgba(7, 88, 108, 0.25);
+  border-radius: 14px;
+  background: rgba(255, 253, 241, 0.9);
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.score-box span {
+  display: block;
+  margin-top: 3px;
+  color: var(--sea-deep);
+  font-size: 23px;
+  letter-spacing: -0.5px;
+  text-transform: none;
+}
+
+.game-board {
+  position: relative;
+  min-height: 610px;
+  overflow: hidden;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 16% 17%, rgba(255,255,255,0.28) 0 4px, transparent 5px),
+    radial-gradient(circle at 84% 23%, rgba(255,255,255,0.22) 0 7px, transparent 8px),
+    radial-gradient(circle at 11% 66%, rgba(255,255,255,0.2) 0 6px, transparent 7px),
+    radial-gradient(circle at 76% 73%, rgba(255,255,255,0.2) 0 4px, transparent 5px),
+    linear-gradient(#8ce1d4 0%, #61c9bd 52%, #42a89f 100%);
+}
+
+.game-board::before {
+  position: absolute;
+  right: -70px;
+  bottom: -90px;
+  left: -70px;
+  height: 180px;
+  border-radius: 50%;
+  background: #e4c374;
+  content: "";
+}
+
+.game-board::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 85px;
+  opacity: 0.45;
+  background: repeating-linear-gradient(105deg, transparent 0 52px, #237a63 53px 59px, transparent 60px 83px);
+  content: "";
+}
+
+.target {
+  position: absolute;
+  z-index: 3;
+  width: 138px;
+  border: 0;
+  border-radius: 18px;
+  padding: 9px;
+  color: var(--ink);
+  background: rgba(255, 253, 241, 0.95);
+  box-shadow: 0 6px 0 rgba(7, 88, 108, 0.2);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.target:hover,
+.target:focus-visible {
+  outline: 3px solid rgba(255, 202, 88, 0.88);
+  transform: translateY(-3px) rotate(-1deg);
+  box-shadow: 0 9px 0 rgba(7, 88, 108, 0.18);
+}
+
+.target:disabled {
+  cursor: default;
+}
+
+.target:nth-child(even):hover,
+.target:nth-child(even):focus-visible {
+  transform: translateY(-3px) rotate(1deg);
+}
+
+.target-1 { top: 26px; left: 7%; }
+.target-2 { top: 18px; left: 28%; }
+.target-3 { top: 18px; right: 28%; }
+.target-4 { top: 26px; right: 7%; }
+.target-5 { top: 232px; left: 3%; }
+.target-6 { top: 232px; right: 3%; }
+.target-7 { bottom: 34px; left: 10%; }
+.target-8 { right: 10%; bottom: 34px; }
+
+.bullseye {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 5px;
+  border: 4px solid #f9f1d4;
+  border-radius: 50%;
+  background: radial-gradient(circle, #f7c855 0 19%, #e36257 20% 39%, #f7ead2 40% 59%, #e36257 60% 78%, #f7ead2 79%);
+  box-shadow: inset 0 0 0 2px rgba(122, 70, 41, 0.2);
+}
+
+.bullseye::before,
+.bullseye::after {
+  position: absolute;
+  background: rgba(91, 57, 43, 0.5);
+  content: "";
+}
+
+.bullseye::before {
+  top: -11px;
+  bottom: -11px;
+  left: 50%;
+  width: 2px;
+}
+
+.bullseye::after {
+  top: 50%;
+  right: -11px;
+  left: -11px;
+  height: 2px;
+}
+
+.arm-number {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 50%;
+  color: white;
+  background: var(--sea-deep);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.target-name {
+  display: block;
+  color: var(--sea-deep);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.target-stats {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.target-estimate {
+  display: block;
+  margin-top: 3px;
+  color: var(--coral-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.true-rate {
+  display: none;
+  margin-top: 2px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.revealed .true-rate {
+  display: block;
+}
+
+.target.hit {
+  animation: target-hit 0.55s ease;
+}
+
+.target.miss {
+  animation: target-miss 0.42s ease;
+}
+
+.octopus {
+  position: absolute;
+  z-index: 2;
+  bottom: 16px;
+  left: 50%;
+  width: min(47%, 470px);
+  transform: translateX(-50%);
+  filter: drop-shadow(0 10px 4px rgba(7, 88, 108, 0.18));
+  pointer-events: none;
+  user-select: none;
+}
+
+.result-bubble {
+  position: absolute;
+  z-index: 5;
+  top: 188px;
+  left: 50%;
+  min-width: 178px;
+  padding: 9px 15px;
+  border: 3px solid rgba(7, 88, 108, 0.24);
+  border-radius: 999px;
+  opacity: 0;
+  color: var(--sea-deep);
+  background: rgba(255, 253, 241, 0.95);
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  transform: translate(-50%, 10px) scale(0.92);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.result-bubble.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.result-bubble.is-hit {
+  color: #2d8655;
+}
+
+.result-bubble.is-miss {
+  color: #b64c4b;
+}
+
+.cork {
+  position: absolute;
+  z-index: 8;
+  width: 20px;
+  height: 13px;
+  border: 2px solid #885b3c;
+  border-radius: 5px;
+  background: #d89a5d;
+  box-shadow: inset -4px 0 rgba(111, 67, 42, 0.2);
+  pointer-events: none;
+  transition: transform 0.38s cubic-bezier(0.25, 0.7, 0.3, 1), opacity 0.12s 0.28s;
+}
+
+.summary-card {
+  display: none;
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--paper);
+}
+
+.summary-card.show {
+  display: block;
+}
+
+.summary-card h2 {
+  margin: 0 0 6px;
+  color: var(--sea-deep);
+  font-size: 22px;
+}
+
+.summary-card p {
+  margin: 7px 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.summary-card .secondary-button {
+  color: var(--sea-deep);
+  background: #d7f0de;
+  box-shadow: 0 4px 0 #8fbea0;
+}
+
+.summary-card .secondary-button:hover {
+  box-shadow: 0 5px 0 #8fbea0;
+}
+
+.summary-card .secondary-button:active {
+  box-shadow: 0 2px 0 #8fbea0;
+}
+
+@keyframes target-hit {
+  30% { transform: scale(1.12) rotate(-3deg); box-shadow: 0 0 0 8px rgba(255, 202, 88, 0.5); }
+}
+
+@keyframes target-miss {
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+@media (max-width: 820px) {
+  .game-board {
+    display: grid;
+    min-height: auto;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 12px 12px 300px;
+  }
+
+  .target {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    padding: 6px 4px;
+  }
+
+  .bullseye {
+    width: 54px;
+    height: 54px;
+  }
+
+  .octopus {
+    bottom: -6px;
+    width: min(420px, 72%);
+  }
+
+  .result-bubble {
+    top: auto;
+    bottom: 254px;
+  }
+}
+
+@media (max-width: 540px) {
+  .page-shell {
+    width: min(100% - 14px, 1120px);
+    padding-top: 8px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    padding: 11px 12px;
+  }
+
+  .new-game-button {
+    padding: 9px 12px;
+    font-size: 14px;
+  }
+
+  .lesson-card {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .score-box {
+    padding: 8px 3px;
+    letter-spacing: 0.3px;
+  }
+
+  .score-box span {
+    font-size: 18px;
+  }
+
+  .game-board {
+    gap: 6px;
+    padding: 10px 7px 245px;
+  }
+
+  .target {
+    min-width: 0;
+    border-radius: 12px;
+  }
+
+  .bullseye {
+    width: 45px;
+    height: 45px;
+    border-width: 3px;
+  }
+
+  .target-name {
+    font-size: 12px;
+  }
+
+  .target-stats,
+  .target-estimate,
+  .true-rate {
+    font-size: 10px;
+  }
+
+  .arm-number {
+    top: -6px;
+    left: -4px;
+    width: 21px;
+    height: 21px;
+    font-size: 11px;
+  }
+
+  .octopus {
+    width: min(350px, 88%);
+  }
+
+  .result-bubble {
+    bottom: 207px;
+    min-width: 150px;
+    padding: 7px 11px;
+    font-size: 13px;
+  }
+}
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="topbar">
+      <div>
+        <h1>Octo-Bandit Range</h1>
+        <p class="subtitle">An explore-or-exploit target practice game</p>
+      </div>
+      <button class="new-game-button" id="newRangeButton" type="button">New range</button>
+    </header>
+
+    <section class="lesson-card">
+      Captain Calamari has <strong>eight arms</strong>, but each pop-gun has a different hidden
+      accuracy. You have <strong>36 corks</strong>. Try arms to learn their odds, then spend your
+      remaining shots on the best bet. Click a target or press keys <strong>1-8</strong>.
+    </section>
+
+    <section class="score-strip" aria-label="Current game status">
+      <div class="score-box">Corks left <span id="shotsLeft">36</span></div>
+      <div class="score-box">Bullseyes <span id="score">0</span></div>
+      <div class="score-box">Best guess <span id="bestGuess">No clue yet</span></div>
+    </section>
+
+    <section class="game-board" id="gameBoard" aria-label="Octopus target practice range">
+      <button class="target target-1" type="button" data-arm="0" aria-label="Fire arm 1 at Dock target">
+        <span class="bullseye"><span class="arm-number">1</span></span>
+        <span class="target-name">Dock</span>
+        <span class="target-stats">0 hits / 0 tries</span>
+        <span class="target-estimate">Estimate: ?</span>
+        <span class="true-rate">True odds: ?</span>
+      </button>
+      <button class="target target-2" type="button" data-arm="1" aria-label="Fire arm 2 at Shell target">
+        <span class="bullseye"><span class="arm-number">2</span></span>
+        <span class="target-name">Shell</span>
+        <span class="target-stats">0 hits / 0 tries</span>
+        <span class="target-estimate">Estimate: ?</span>
+        <span class="true-rate">True odds: ?</span>
+      </button>
+      <button class="target target-3" type="button" data-arm="2" aria-label="Fire arm 3 at Pearl target">
+        <span class="bullseye"><span class="arm-number">3</span></span>
+        <span class="target-name">Pearl</span>
+        <span class="target-stats">0 hits / 0 tries</span>
+        <span class="target-estimate">Estimate: ?</span>
+        <span class="true-rate">True odds: ?</span>
+      </button>
+      <button class="target target-4" type="button" data-arm="3" aria-label="Fire arm 4 at Buoy target">
+        <span class="bullseye"><span class="arm-number">4</span></span>
+        <span class="target-name">Buoy</span>
+        <span class="target-stats">0 hits / 0 tries</span>
+        <span class="target-estimate">Estimate: ?</span>
+        <span class="true-rate">True odds: ?</span>
+      </button>
+      <button class="target target-5" type="button" data-arm="4" aria-label="Fire arm 5 at Kelp target">
+        <span class="bullseye"><span class="arm-number">5</span></span>
+        <span class="target-name">Kelp</span>
+        <span class="target-stats">0 hits / 0 tries</span>
+        <span class="target-estimate">Estimate: ?</span>
+        <span class="true-rate">True odds: ?</span>
+      </button>
+      <button class="target target-6" type="button" data-arm="5" aria-label="Fire arm 6 at Reef target">
+        <span class="bullseye"><span class="arm-number">6</span></span>
+        <span class="target-name">Reef</span>
+        <span class="target-stats">0 hits / 0 tries</span>
+        <span class="target-estimate">Estimate: ?</span>
+        <span class="true-rate">True odds: ?</span>
+      </button>
+      <button class="target target-7" type="button" data-arm="6" aria-label="Fire arm 7 at Cove target">
+        <span class="bullseye"><span class="arm-number">7</span></span>
+        <span class="target-name">Cove</span>
+        <span class="target-stats">0 hits / 0 tries</span>
+        <span class="target-estimate">Estimate: ?</span>
+        <span class="true-rate">True odds: ?</span>
+      </button>
+      <button class="target target-8" type="button" data-arm="7" aria-label="Fire arm 8 at Anchor target">
+        <span class="bullseye"><span class="arm-number">8</span></span>
+        <span class="target-name">Anchor</span>
+        <span class="target-stats">0 hits / 0 tries</span>
+        <span class="target-estimate">Estimate: ?</span>
+        <span class="true-rate">True odds: ?</span>
+      </button>
+
+      <div class="result-bubble" id="resultBubble" role="status" aria-live="polite">
+        Pick an arm to fire!
+      </div>
+      <img class="octopus" src="assets/octo-bandit.png" alt="A cute octopus in a bandit mask holding eight cork pop-guns">
+    </section>
+
+    <section class="summary-card" id="summaryCard" aria-live="polite">
+      <h2>Range report</h2>
+      <p id="summaryText"></p>
+      <p id="lessonText"></p>
+      <div class="summary-actions">
+        <button id="replayButton" type="button">Replay these odds</button>
+        <button class="secondary-button" id="summaryNewRangeButton" type="button">Try a new range</button>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+const ROUND_SIZE = 36;
+const RATE_POOL = [0.12, 0.2, 0.28, 0.38, 0.5, 0.62, 0.74, 0.86];
+
+const gameBoard = document.getElementById("gameBoard");
+const targets = [...document.querySelectorAll(".target")];
+const shotsLeftEl = document.getElementById("shotsLeft");
+const scoreEl = document.getElementById("score");
+const bestGuessEl = document.getElementById("bestGuess");
+const resultBubble = document.getElementById("resultBubble");
+const summaryCard = document.getElementById("summaryCard");
+const summaryText = document.getElementById("summaryText");
+const lessonText = document.getElementById("lessonText");
+
+let arms = [];
+let shotsLeft = ROUND_SIZE;
+let score = 0;
+let locked = false;
+let resultTimer;
+let roundToken = 0;
+
+function shuffled(values) {
+  const result = [...values];
+
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+
+  return result;
+}
+
+function resetRound(keepOdds = false) {
+  const rates = keepOdds && arms.length ? arms.map(arm => arm.rate) : shuffled(RATE_POOL);
+  roundToken += 1;
+  arms = rates.map(rate => ({ rate, tries: 0, hits: 0 }));
+  shotsLeft = ROUND_SIZE;
+  score = 0;
+  locked = false;
+  clearTimeout(resultTimer);
+  resultBubble.className = "result-bubble";
+  resultBubble.textContent = "Pick an arm to fire!";
+  summaryCard.classList.remove("show");
+  gameBoard.classList.remove("revealed");
+  targets.forEach(target => {
+    target.disabled = false;
+    target.classList.remove("hit", "miss");
+  });
+  render();
+}
+
+function getBestGuess() {
+  const triedArms = arms
+    .map((arm, index) => ({ ...arm, index }))
+    .filter(arm => arm.tries > 0);
+
+  if (!triedArms.length) {
+    return null;
+  }
+
+  return triedArms.reduce((best, arm) => {
+    const estimate = arm.hits / arm.tries;
+    const bestEstimate = best.hits / best.tries;
+    return estimate > bestEstimate ? arm : best;
+  });
+}
+
+function render() {
+  shotsLeftEl.textContent = shotsLeft;
+  scoreEl.textContent = score;
+
+  const bestGuess = getBestGuess();
+  bestGuessEl.textContent = bestGuess ? `Arm ${bestGuess.index + 1}` : "No clue yet";
+
+  targets.forEach((target, index) => {
+    const arm = arms[index];
+    const estimate = arm.tries ? `${Math.round(arm.hits / arm.tries * 100)}%` : "?";
+    target.querySelector(".target-stats").textContent = `${arm.hits} hits / ${arm.tries} tries`;
+    target.querySelector(".target-estimate").textContent = `Estimate: ${estimate}`;
+    target.querySelector(".true-rate").textContent = `True odds: ${Math.round(arm.rate * 100)}%`;
+  });
+}
+
+function showResult(message, isHit) {
+  clearTimeout(resultTimer);
+  resultBubble.textContent = message;
+  resultBubble.className = `result-bubble show ${isHit ? "is-hit" : "is-miss"}`;
+  resultTimer = setTimeout(() => {
+    resultBubble.classList.remove("show");
+  }, 1100);
+}
+
+function animateCork(target) {
+  const boardRect = gameBoard.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const cork = document.createElement("span");
+  const startX = boardRect.width / 2 - 10;
+  const startY = boardRect.height * 0.69;
+  const endX = targetRect.left - boardRect.left + targetRect.width / 2 - startX;
+  const endY = targetRect.top - boardRect.top + targetRect.height / 2 - startY;
+
+  cork.className = "cork";
+  cork.style.left = `${startX}px`;
+  cork.style.top = `${startY}px`;
+  gameBoard.appendChild(cork);
+
+  requestAnimationFrame(() => {
+    cork.style.transform = `translate(${endX}px, ${endY}px) rotate(420deg)`;
+    cork.style.opacity = "0";
+  });
+
+  setTimeout(() => cork.remove(), 520);
+}
+
+function finishRound() {
+  const bestRate = Math.max(...arms.map(arm => arm.rate));
+  const bestIndex = arms.findIndex(arm => arm.rate === bestRate);
+  const randomExpected = ROUND_SIZE * arms.reduce((sum, arm) => sum + arm.rate, 0) / arms.length;
+  const bestExpected = ROUND_SIZE * bestRate;
+  const bestArmTries = arms[bestIndex].tries;
+  const bestGuess = getBestGuess();
+  const foundBest = bestGuess && bestGuess.index === bestIndex;
+
+  locked = true;
+  targets.forEach(target => {
+    target.disabled = true;
+  });
+  gameBoard.classList.add("revealed");
+
+  summaryText.textContent =
+    `You landed ${score} of ${ROUND_SIZE} corks. Arm ${bestIndex + 1} was the best arm at ` +
+    `${Math.round(bestRate * 100)}% accuracy. You fired it ${bestArmTries} times.`;
+  lessonText.textContent =
+    `Always choosing the best arm would average about ${bestExpected.toFixed(1)} hits. ` +
+    `Choosing randomly would average about ${randomExpected.toFixed(1)}. ` +
+    `${foundBest ? "Your final best guess found the winner." : "Your final best guess missed the winner this time."} ` +
+    `A few early misses can be misleading, which is why exploration matters.`;
+  summaryCard.classList.add("show");
+  summaryCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function fireArm(index) {
+  if (locked || shotsLeft <= 0) {
+    return;
+  }
+
+  locked = true;
+  const target = targets[index];
+  const arm = arms[index];
+  const isHit = Math.random() < arm.rate;
+  const shotRoundToken = roundToken;
+  animateCork(target);
+
+  setTimeout(() => {
+    if (shotRoundToken !== roundToken) {
+      return;
+    }
+
+    arm.tries += 1;
+    shotsLeft -= 1;
+    target.classList.remove("hit", "miss");
+    void target.offsetWidth;
+
+    if (isHit) {
+      arm.hits += 1;
+      score += 1;
+      target.classList.add("hit");
+      showResult(`Arm ${index + 1}: bullseye!`, true);
+    } else {
+      target.classList.add("miss");
+      showResult(`Arm ${index + 1}: splash!`, false);
+    }
+
+    render();
+
+    if (shotsLeft === 0) {
+      finishRound();
+    } else {
+      locked = false;
+    }
+  }, 390);
+}
+
+targets.forEach(target => {
+  target.addEventListener("click", () => {
+    fireArm(Number(target.dataset.arm));
+  });
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key >= "1" && event.key <= "8") {
+    fireArm(Number(event.key) - 1);
+  }
+});
+
+document.getElementById("newRangeButton").addEventListener("click", () => resetRound());
+document.getElementById("summaryNewRangeButton").addEventListener("click", () => resetRound());
+document.getElementById("replayButton").addEventListener("click", () => resetRound(true));
+
+resetRound();
+  </script>
+</body>
+</html>

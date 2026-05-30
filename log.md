@@ -1,5 +1,13 @@
 # ksink log
 
+## 2026-05-30 octo-bandit range
+Built a multi-armed bandit intuition game:
+- added an eight-arm octopus target-practice game with hidden accuracy rates
+- shows empirical estimates while keeping true odds hidden until the round ends
+- added a generated transparent Captain Calamari game sprite
+Up next:
+- tune the round length after playtesting
+
 ## 2026-05-16 drifting away bubble fix
 Resolved conflict markers and stabilized bubble timing:
 - uses elapsed duration progress for ascent
